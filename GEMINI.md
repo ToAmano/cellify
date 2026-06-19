@@ -43,6 +43,11 @@ To keep the codebase maintainable and open for future DFT software additions:
 *   **`core` Module**: Structural manipulation logic (supercells, defects, slabs) must be written as modular, pure-like functions that receive a `Structure` and return a modified `Structure` without being aware of input/output files.
 *   **Future Modulations**: The core logic remains in a single `core.py` for simplicity now, but is kept decoupled so it can be easily split into a `core/` package when the number of features increases.
 
+### ④ Branch Management and PR Lifecycle
+To maintain clean git history and keep features isolated:
+*   **One Branch Per Task/Feature**: Always create a new, dedicated branch for each feature or task. Do not implement unrelated requests or new tasks on an existing, open feature branch.
+*   **Cleanup After Merge**: Once a branch's Pull Request is merged into `main`, delete the branch locally and remotely to prevent reuse.
+
 ---
 
 ## 3. Testing & Linting Conventions and Execution
