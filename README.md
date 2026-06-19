@@ -63,7 +63,27 @@ A user-friendly command-line interface (CLI) tool to quickly, intuitively, and a
 
 ---
 
-## 3. CLI Design
+## 3. Installation
+
+You can install `cellify` from the local repository directory:
+
+```bash
+# Clone the repository
+git clone https://github.com/ToAmano/cellify.git
+cd cellify
+
+# Install in editable mode for development
+pip install -e .
+
+# Or install with test dependencies
+pip install -e ".[test]"
+```
+
+After installation, the `cellify` command will be registered and executable from anywhere in your shell environment.
+
+---
+
+## 4. CLI Design
 
 ### Command-Line Arguments
 
@@ -85,7 +105,7 @@ cellify -i <input_file> -o <output_file> [options]
 
 ---
 
-## 4. Use Cases
+## 5. Use Cases
 
 ### 1. Create a simple $2 \times 2 \times 3$ supercell (VASP POSCAR)
 ```bash
@@ -115,7 +135,7 @@ cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuu
 
 ---
 
-## 5. Directory Structure
+## 6. Directory Structure
 
 This project uses the standard Python `src-layout`:
 
@@ -138,7 +158,7 @@ cellify/
 
 ---
 
-## 6. Technical Stack & Development Approach
+## 7. Technical Stack & Development Approach
 
 1.  **Language**: **Python 3** (High affinity with scientific and DFT software ecosystems).
 2.  **Core Libraries**: **pymatgen** and **ASE (Atomic Simulation Environment)**.
