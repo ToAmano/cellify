@@ -251,6 +251,9 @@ def generate_surface_slab(
     """
     Generates a surface slab model using pymatgen's SlabGenerator.
     """
+    if all(h == 0 for h in miller_index):
+        raise ValueError("Miller indices cannot all be zero.")
+
     slab_thick: float = thick if thick else 10.0
     vac_thick: float = vacuum if vacuum else 15.0
 
@@ -268,4 +271,4 @@ def generate_surface_slab(
 
     # Adopt the first generated slab model (often the most symmetric and stable one)
     slab = slabs[0]
-    return slab.generate_unique_slab_structs()[0]
+    return slab
