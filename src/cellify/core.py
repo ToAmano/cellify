@@ -34,7 +34,7 @@ def save_structure_file(filepath, structure, meta_data):
     """
     構造ファイルを保存します。QEの場合は元のパラメータを引き継ぎます。
     """
-    if meta_data["mode"] in ["pymatgen", "fallback"]:
+    if meta_data["mode"] != "standard":
         write_qe_input(filepath, structure, meta_data)
     else:
         # standard モードの場合
