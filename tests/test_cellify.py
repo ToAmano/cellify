@@ -9,6 +9,7 @@ from cellify.core import (
     apply_substitutions,
     apply_vacancies,
     calculate_min_dist_scaling,
+    convert_to_conventional,
     generate_surface_slab,
     load_structure_file,
     parse_matrix_string,
@@ -104,3 +105,12 @@ def test_apply_vacancies(poscar_path):
     # Create a vacancy by removing the 0th atom
     apply_vacancies(structure, ["Si:0"])
     assert len(structure) == 1
+
+
+def test_convert_to_conventional(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    assert len(structure) == 2  # Primitive cell has 2 atoms
+
+    conv_structure = convert_to_conventional(structure)
+    assert len(conv_structure) == 8  # Conventional cell has 8 atoms
+    assert conv_structure.composition.reduced_formula == "Si"
