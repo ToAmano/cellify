@@ -1,6 +1,17 @@
 import argparse
 import sys
+import os
+import numpy as np
 from cellify import __version__
+from cellify.core import (
+    load_structure_file,
+    save_structure_file,
+    parse_matrix_string,
+    calculate_min_dist_scaling,
+    apply_substitutions,
+    apply_vacancies,
+    generate_surface_slab
+)
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(
@@ -15,7 +26,7 @@ def parse_args(args=None):
         "-i", "--input", required=True, help="Input structure file path (e.g. POSCAR, input.cif, qe.in)"
     )
     parser.add_argument(
-        "-o", "--output", help="Output structure file path (default: input_supercell.<ext>)"
+        "-o", "--output", help="Output structure file path (default: <input_base>_supercell.<ext>)"
     )
 
     # Supercell options
@@ -59,31 +70,88 @@ def parse_args(args=None):
 
 def main():
     args = parse_args()
-    print("Welcome to cellify!")
-    print(f"Input file: {args.input}")
-    if args.output:
-        print(f"Output file: {args.output}")
-    else:
-        print("Output file: (automatically generated)")
-
+    
+    if not os.path.exists(args.input):
+        print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
+        sys.exit(1)
+        
+    print(f"Loading structure from: {args.input}")
+    try:
+        structure, meta_data = load_structure_file(args.input)
+    except Exception as e:
+        print(f"Error loading file: {e}", file=sys.stderr)
+        sys.exit(1)
+        
+    print(f"  Formula: {structure.composition.reduced_formula}")
+    print(f"  Volume:  {structure.volume:.3f} A^3")
+    print(f"  Number of atoms: {len(structure)}")
+    
+    # 1. Supercell generation
     if args.dim:
-        print(f"Supercell dimension: {args.dim}")
+        print(f"Generating supercell with diagonal scaling: {args.dim}")
+        structure.make_supercell(args.dim)
     elif args.matrix:
-        print(f"Transformation matrix: {args.matrix}")
+        try:
+            matrix = parse_matrix_string(args.matrix)
+            print(f"Generating supercell with matrix:\n{matrix}")
+            structure.make_supercell(matrix)
+        except Exception as e:
+            print(f"Error parsing matrix: {e}", file=sys.stderr)
+            sys.exit(1)
     elif args.min_dist:
-        print(f"Minimum distance constraint: {args.min_dist} A")
-
+        nx, ny, nz = calculate_min_dist_scaling(structure, args.min_dist)
+        print(f"Calculated scaling for minimum distance >= {args.min_dist} A: [{nx}, {ny}, {nz}]")
+        structure.make_supercell([nx, ny, nz])
+        
+    # 2. Defect and doping modifications
     if args.substitute:
-        print(f"Substitutions: {args.substitute}")
+        try:
+            apply_substitutions(structure, args.substitute)
+        except Exception as e:
+            print(f"Error applying substitutions: {e}", file=sys.stderr)
+            sys.exit(1)
+            
     if args.vacancy:
-        print(f"Vacancies: {args.vacancy}")
+        try:
+            apply_vacancies(structure, args.vacancy)
+        except Exception as e:
+            print(f"Error applying vacancies: {e}", file=sys.stderr)
+            sys.exit(1)
 
+    # 3. Slab generation
     if args.slab:
-        print(f"Slab Miller indices: {args.slab}")
-        print(f"Slab thickness: {args.thick}")
-        print(f"Vacuum thickness: {args.vacuum}")
+        print(f"Generating slab model for Miller indices: {args.slab}")
+        try:
+            structure = generate_surface_slab(structure, args.slab, args.thick, args.vacuum)
+        except Exception as e:
+            print(f"Error generating slab: {e}", file=sys.stderr)
+            sys.exit(1)
+            
+    # Print final structure summary
+    print("\nFinal structure summary:")
+    print(f"  Formula: {structure.composition.reduced_formula}")
+    print(f"  Volume:  {structure.volume:.3f} A^3")
+    print(f"  Number of atoms: {len(structure)}")
+    print("  Lattice constants:")
+    print(f"    a = {structure.lattice.a:.4f} A, b = {structure.lattice.b:.4f} A, c = {structure.lattice.c:.4f} A")
+    print(f"    alpha = {structure.lattice.alpha:.2f} deg, beta = {structure.lattice.beta:.2f} deg, gamma = {structure.lattice.gamma:.2f} deg")
 
-    # TODO: core.py / parser.py のロジックを呼び出す
+    # Determine default output filename if not specified
+    if not args.output:
+        base, ext = os.path.splitext(args.input)
+        # 特別扱い: POSCAR / CONTCAR などの拡張子がないVASPファイル
+        if not ext and base in ["POSCAR", "CONTCAR"]:
+            args.output = f"{base}_supercell"
+        else:
+            args.output = f"{base}_supercell{ext}"
+            
+    print(f"\nSaving final structure to: {args.output}")
+    try:
+        save_structure_file(args.output, structure, meta_data)
+        print("Success!")
+    except Exception as e:
+        print(f"Error saving file: {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
