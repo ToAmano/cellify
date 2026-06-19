@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cellify"
+version = "0.1.0"
+description = "A friendly DFT helper CLI for generating supercells and calculation-ready inputs."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "ToAmano" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "ase>=3.22.0",
+    "pymatgen>=2023.0.0",
+    "numpy>=1.20.0",
+]
+
+[project.scripts]
+cellify = "cellify.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cellify"]
