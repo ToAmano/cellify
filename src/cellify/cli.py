@@ -1,7 +1,9 @@
 import argparse
 import sys
 import os
+from typing import List, Optional, Tuple, Dict, Any
 import numpy as np
+from pymatgen.core import Structure
 from cellify import __version__
 from cellify.core import (
     load_structure_file,
@@ -13,7 +15,7 @@ from cellify.core import (
     generate_surface_slab
 )
 
-def parse_args(args=None):
+def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="cellify: A friendly DFT helper CLI for generating supercells and calculation-ready inputs."
     )
@@ -68,8 +70,8 @@ def parse_args(args=None):
 
     return parser.parse_args(args)
 
-def main():
-    args = parse_args()
+def main() -> None:
+    args: argparse.Namespace = parse_args()
     
     if not os.path.exists(args.input):
         print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
@@ -92,7 +94,7 @@ def main():
         structure.make_supercell(args.dim)
     elif args.matrix:
         try:
-            matrix = parse_matrix_string(args.matrix)
+            matrix: np.ndarray = parse_matrix_string(args.matrix)
             print(f"Generating supercell with matrix:\n{matrix}")
             structure.make_supercell(matrix)
         except Exception as e:
@@ -139,7 +141,6 @@ def main():
     # Determine default output filename if not specified
     if not args.output:
         base, ext = os.path.splitext(args.input)
-        # 特別扱い: POSCAR / CONTCAR などの拡張子がないVASPファイル
         if not ext and base in ["POSCAR", "CONTCAR"]:
             args.output = f"{base}_supercell"
         else:

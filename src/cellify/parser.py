@@ -5,9 +5,10 @@ cellify のための入力・出力パーサモジュール。
 """
 import re
 import os
+from typing import Dict, Any
 from pymatgen.core import Structure
 
-def parse_qe_input(filepath):
+def parse_qe_input(filepath: str) -> Dict[str, Any]:
     """
     Quantum ESPRESSOの入力ファイルをテキストとして読み込み、構造データを抽出します。
     構造のパースには最も堅牢なASEのespresso-inパーサを利用します。
@@ -34,16 +35,16 @@ def parse_qe_input(filepath):
         "filepath": filepath
     }
 
-def write_qe_input(filepath, structure, original_data):
+def write_qe_input(filepath: str, structure: Structure, original_data: Dict[str, Any]) -> None:
     """
     元のパラメータ、コメント、その他のブロック（K_POINTS等）を完全に維持し、
     nat / ntyp および構造座標データのみを更新したQE入力ファイルを書き出します。
     """
-    content = original_data["content"]
+    content: str = original_data["content"]
     
     # 1. 新しい原子数と原子種数を計算
-    nat_new = len(structure)
-    ntyp_new = len(structure.composition.elements)
+    nat_new: int = len(structure)
+    ntyp_new: int = len(structure.composition.elements)
     
     # 2. ネームリスト内の nat と ntyp を更新
     # 単語境界 (\b) を考慮して正確に置換
@@ -52,7 +53,7 @@ def write_qe_input(filepath, structure, original_data):
     
     # 3. 元の構造関連ブロック（ATOMIC_SPECIES, CELL_PARAMETERS, ATOMIC_POSITIONS）をテキストから除去
     # 各ブロックはキーワードで始まり、次のブロック名、ネームリストの開始(&)、またはファイル末尾まで続く
-    cleaned_content = content
+    cleaned_content: str = content
     struct_keywords = ["ATOMIC_SPECIES", "CELL_PARAMETERS", "ATOMIC_POSITIONS"]
     for kw in struct_keywords:
         # キーワードから始まり、別のキーワード、ネームリスト、またはファイル末尾の手前までを削除
@@ -63,7 +64,7 @@ def write_qe_input(filepath, structure, original_data):
     cleaned_content = cleaned_content.strip() + "\n\n"
     
     # 4. 元ファイルから擬ポテンシャル情報を抽出
-    pseudos = {}
+    pseudos: Dict[str, Any] = {}
     species_match = re.search(r'(?i)ATOMIC_SPECIES\s*\n(.*?)(?=\n\s*(?:ATOMIC_|CELL_|K_POINTS|KPOINTS|&[A-Za-z]+)|\Z)', content, re.DOTALL)
     if species_match:
         for line in species_match.group(1).strip().split('\n'):
@@ -73,19 +74,19 @@ def write_qe_input(filepath, structure, original_data):
     
     # 5. 各構造ブロックの再構築
     # ATOMIC_SPECIES
-    species_str = "ATOMIC_SPECIES\n"
+    species_str: str = "ATOMIC_SPECIES\n"
     for el in structure.composition.elements:
-        el_symbol = el.symbol
+        el_symbol: str = el.symbol
         mass, pseudo = pseudos.get(el_symbol, (str(el.atomic_mass), f"{el_symbol}.UPF"))
         species_str += f"  {el_symbol}  {mass}  {pseudo}\n"
     
     # CELL_PARAMETERS (angstrom単位)
-    cell_str = "\nCELL_PARAMETERS angstrom\n"
+    cell_str: str = "\nCELL_PARAMETERS angstrom\n"
     for vec in structure.lattice.matrix:
         cell_str += f"  {vec[0]:.10f}  {vec[1]:.10f}  {vec[2]:.10f}\n"
     
     # ATOMIC_POSITIONS (crystal/fractional座標)
-    pos_str = "\nATOMIC_POSITIONS crystal\n"
+    pos_str: str = "\nATOMIC_POSITIONS crystal\n"
     for site in structure:
         pos_str += f"  {site.specie.symbol}  {site.a:.10f}  {site.b:.10f}  {site.c:.10f}\n"
     
