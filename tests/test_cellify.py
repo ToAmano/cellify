@@ -1,5 +1,6 @@
 import os
 import re
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -114,3 +115,275 @@ def test_convert_to_conventional(poscar_path):
     conv_structure = convert_to_conventional(structure)
     assert len(conv_structure) == 8  # Conventional cell has 8 atoms
     assert conv_structure.composition.reduced_formula == "Si"
+
+
+def test_parse_matrix_string_errors():
+    with pytest.raises(ValueError, match="Matrix string must define exactly 3 rows"):
+        parse_matrix_string("1 0 0 / 0 1 0")
+    with pytest.raises(ValueError, match="Each row in the matrix must have exactly 3 elements"):
+        parse_matrix_string("1 0 0 / 0 1 0 / 0 0")
+
+
+def test_apply_substitutions_errors(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+
+    # Rule split error
+    with pytest.raises(ValueError, match="Invalid substitution rule"):
+        apply_substitutions(structure, ["Si:P"])
+
+    # Matching elements not found (warning path)
+    apply_substitutions(structure, ["H:P:0"])
+
+    # Index out of range
+    with pytest.raises(IndexError, match="out of range"):
+        apply_substitutions(structure, ["Si:P:999"])
+
+    # Invalid index target
+    with pytest.raises(ValueError, match="Invalid substitution target index or percentage"):
+        apply_substitutions(structure, ["Si:P:abc"])
+
+    # Warning path: actual element does not match src_el
+    structure2, _ = load_structure_file(poscar_path)
+    apply_substitutions(structure2, ["Si:P:0"])
+    apply_substitutions(structure2, ["Si:Al:0"])
+
+
+def test_apply_substitutions_percentage(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    structure.make_supercell([2, 2, 2]) # 16 atoms
+
+    # Percentage substitution
+    apply_substitutions(structure, ["Si:P:50%"])
+    assert structure.composition["Si"] == 8
+    assert structure.composition["P"] == 8
+
+    # Small percentage resulting in at least 1 atom replaced
+    structure2, _ = load_structure_file(poscar_path)
+    apply_substitutions(structure2, ["Si:P:0.01%"])
+    assert structure2.composition.reduced_formula == "SiP"
+
+
+def test_apply_vacancies_errors(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+
+    # Rule split error
+    with pytest.raises(ValueError, match="Invalid vacancy rule"):
+        apply_vacancies(structure, ["Si"])
+
+    # Matching elements not found (warning)
+    apply_vacancies(structure, ["H:0"])
+
+    # Index out of range
+    with pytest.raises(IndexError, match="out of range"):
+        apply_vacancies(structure, ["Si:999"])
+
+    # Invalid vacancy target
+    with pytest.raises(ValueError, match="Invalid vacancy target"):
+        apply_vacancies(structure, ["Si:abc"])
+
+    # Warning path: actual element does not match vacancy element
+    structure2, _ = load_structure_file(poscar_path)
+    apply_substitutions(structure2, ["Si:P:0"])
+    apply_vacancies(structure2, ["Si:0"])
+
+
+def test_apply_vacancies_random(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    # Scale to 64 atoms (> 20 atoms) to trigger the random vacancy branch
+    structure.make_supercell([2, 4, 4])
+    assert len(structure) == 64
+
+    # Apply count-based vacancies (e.g. remove 4 Si atoms)
+    apply_vacancies(structure, ["Si:4"])
+    assert len(structure) == 60
+
+
+def test_generate_surface_slab_errors(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+
+    # Invalid Miller index
+    with pytest.raises(ValueError):
+        generate_surface_slab(structure, [0, 0, 0], 5.0, 10.0)
+
+
+# CLI main integration tests
+def test_cli_main_simple(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "-d", "2", "2", "2"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 16
+
+
+def test_cli_main_conventional(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--conventional"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 8
+
+
+def test_cli_main_min_dist(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--min-dist", "10.0"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 128
+
+
+def test_cli_main_substitute_and_vacancy(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = [
+        "cellify", "-i", poscar_path, "-o", str(out_file),
+        "--substitute", "Si:P:0", "--vacancy", "Si:1"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 1
+    assert structure[0].specie.symbol == "P"
+
+
+def test_cli_main_slab(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = [
+        "cellify", "-i", poscar_path, "-o", str(out_file),
+        "--slab", "1", "0", "0", "--thick", "5.0", "--vacuum", "10.0"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+
+
+def test_cli_main_matrix(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--matrix", "1 0 0 / 0 1 0 / 0 0 2"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 4
+
+
+def test_cli_main_qe(qe_path, tmp_path):
+    out_file = tmp_path / "qe_out.in"
+    test_args = ["cellify", "-i", qe_path, "-o", str(out_file), "-d", "2", "2", "2"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+
+
+def test_cli_main_missing_file():
+    test_args = ["cellify", "-i", "nonexistent_file_path.POSCAR"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_main_invalid_matrix(poscar_path):
+    test_args = ["cellify", "-i", poscar_path, "--matrix", "1 0 / 0 1"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_main_corrupt_file(tmp_path):
+    corrupt_file = tmp_path / "corrupt.POSCAR"
+    corrupt_file.write_text("corrupt contents")
+    test_args = ["cellify", "-i", str(corrupt_file)]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+# EspressoAdapter errors
+def test_espresso_adapter_errors(tmp_path):
+    from cellify.adapters.espresso import EspressoAdapter
+    adapter = EspressoAdapter()
+
+    # 1. File not found
+    with pytest.raises(FileNotFoundError):
+        adapter.read(str(tmp_path / "nonexistent_file_path.in"))
+
+    # 2. Corrupt/parse error
+    corrupt_file = tmp_path / "corrupt_espresso.in"
+    corrupt_file.write_text("invalid contents")
+    with pytest.raises(ValueError, match="Failed to parse structure from Quantum ESPRESSO file"):
+        adapter.read(str(corrupt_file))
+
+
+# CLI error paths for substitutions, vacancies, and slabs
+def test_cli_substitute_error(poscar_path):
+    test_args = ["cellify", "-i", poscar_path, "--substitute", "Si:P"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_vacancy_error(poscar_path):
+    test_args = ["cellify", "-i", poscar_path, "--vacancy", "Si"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_slab_error(poscar_path):
+    test_args = ["cellify", "-i", poscar_path, "--slab", "0", "0", "0"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+# CLI default output path determination
+def test_cli_default_output_poscar(poscar_path, tmp_path):
+    import shutil
+    temp_poscar = tmp_path / "POSCAR"
+    shutil.copy(poscar_path, temp_poscar)
+
+    test_args = ["cellify", "-i", str(temp_poscar), "-d", "2", "2", "2"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+
+    expected_out = tmp_path / "POSCAR_supercell"
+    assert expected_out.exists()
+
+
+def test_cli_default_output_with_ext(poscar_path, tmp_path):
+    import shutil
+    temp_poscar_ext = tmp_path / "POSCAR.vasp"
+    shutil.copy(poscar_path, temp_poscar_ext)
+
+    test_args = ["cellify", "-i", str(temp_poscar_ext), "-d", "2", "2", "2"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+
+    expected_out = tmp_path / "POSCAR_supercell.vasp"
+    assert expected_out.exists()
