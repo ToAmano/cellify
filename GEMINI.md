@@ -44,10 +44,13 @@ To keep the codebase maintainable and open for future DFT software additions:
 
 ---
 
-## 3. Testing Conventions and Execution
-To guarantee quality, unit and integration tests are managed using `pytest` inside the [tests/](file:///Users/amano/works/research/supercell/tests/) directory.
+## 3. Testing & Linting Conventions and Execution
+To guarantee code quality and stability, unit/integration tests are managed using `pytest` inside the [tests/](file:///Users/amano/works/research/supercell/tests/) directory, and static analysis/formatting are managed by `pre-commit`.
 
-*   **How to Run Tests**:
+### ① Execution Before Commit 【Strictly Required】
+You **must** run and pass both the test suite and pre-commit checks locally before executing any `git commit`:
+
+1.  **Run Pytest**:
     ```bash
     # Install dependencies including test tools
     pip install -e ".[test]"
@@ -55,9 +58,18 @@ To guarantee quality, unit and integration tests are managed using `pytest` insi
     # Run tests
     pytest
     ```
-*   **Conventions**:
-    *   Whenever implementing new features or fixing bugs, corresponding tests **must** be added to the `tests/` directory.
-    *   Always maintain a fully passing (`passed`) state for all tests in local verification and CI.
+2.  **Run Pre-commit**:
+    ```bash
+    # Install pre-commit hook (first time only to enable commit-time validation)
+    pre-commit install
+
+    # Run checks manually on all files before committing
+    pre-commit run --all-files
+    ```
+
+### ② Conventions
+*   Whenever implementing new features or fixing bugs, corresponding tests **must** be added to the `tests/` directory.
+*   Always maintain a fully passing (`passed`) state for all tests and linters in local verification and CI. Do not commit or push failing code.
 
 ---
 
