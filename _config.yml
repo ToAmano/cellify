@@ -1,0 +1,4 @@
+theme: jekyll-theme-minimal
+title: cellify
+description: A user-friendly CLI tool for DFT researchers to generate supercells and prepare inputs.
+show_downloads: true
