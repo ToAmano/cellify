@@ -41,3 +41,6 @@ env/
 .DS_Store
 .vscode/
 .idea/
+
+# AI Agent
+.agents/
