@@ -1,6 +1,6 @@
 """
 Core modeling logic for cellify.
-Handles structure loading, supercell generation, substitutions, 
+Handles structure loading, supercell generation, substitutions,
 vacancies, slab generation, and file saving using pymatgen and ASE.
 """
 

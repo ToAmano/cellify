@@ -51,7 +51,7 @@ To guarantee quality, unit and integration tests are managed using `pytest` insi
     ```bash
     # Install dependencies including test tools
     pip install -e ".[test]"
-    
+
     # Run tests
     pytest
     ```

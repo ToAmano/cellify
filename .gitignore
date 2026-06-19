@@ -41,6 +41,7 @@ env/
 .DS_Store
 .vscode/
 .idea/
+.flake8
 
 # AI Agent
 .agents/
