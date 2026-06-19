@@ -136,10 +136,15 @@ cellify/
 └── src/
     └── cellify/
         ├── __init__.py
-        ├── cli.py      # コマンドライン引数の処理
-        ├── core.py     # スーパーセル生成等のコアロジック (pymatgen/ASEの呼び出し)
-        └── parser.py   # 計算パラメータのパース・書き換えロジック (QE等用)
+        ├── cli.py            # コマンドライン引数の処理
+        ├── core.py           # スーパーセル、欠陥、スラブ生成などの共通モデリングロジック
+        └── adapters/         # 計算ソフト固有のパラメータ維持・I/Oアダプターパッケージ
+            ├── __init__.py
+            ├── base.py       # アダプターの共通抽象インターフェース
+            ├── espresso.py   # Quantum ESPRESSO用アダプター
+            └── standard.py   # VASPやCIFなど汎用フォーマット用アダプター
 ```
+
 
 ## 6. 技術選定・開発アプローチ
 

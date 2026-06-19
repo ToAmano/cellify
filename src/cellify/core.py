@@ -11,31 +11,21 @@ from pymatgen.core import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.core.surface import SlabGenerator
 
-from cellify.parser import parse_qe_input, write_qe_input
+from cellify.adapters import get_adapter, BaseAdapter
 
 def load_structure_file(filepath: str) -> Tuple[Structure, Dict[str, Any]]:
     """
     ファイルをロードして structure オブジェクトとパースメタデータを返します。
-    QE入力ファイルは特別扱いし、それ以外はpymatgenで自動判別読み込みします。
     """
-    lower_path: str = filepath.lower()
-    is_qe: bool = any(lower_path.endswith(ext) for ext in [".in", ".qe", ".pwi"]) or "qe" in lower_path or "espresso" in lower_path
-    
-    if is_qe:
-        qe_data: Dict[str, Any] = parse_qe_input(filepath)
-        return qe_data["structure"], qe_data
-    else:
-        struct: Structure = Structure.from_file(filepath)
-        return struct, {"mode": "standard", "filepath": filepath}
+    adapter: BaseAdapter = get_adapter(filepath)
+    return adapter.read(filepath)
 
 def save_structure_file(filepath: str, structure: Structure, meta_data: Dict[str, Any]) -> None:
     """
-    構造ファイルを保存します。QEの場合は元のパラメータを引き継ぎます。
+    構造ファイルを保存します。
     """
-    if meta_data["mode"] != "standard":
-        write_qe_input(filepath, structure, meta_data)
-    else:
-        structure.to(filename=filepath)
+    adapter: BaseAdapter = get_adapter(filepath)
+    adapter.write(filepath, structure, meta_data)
 
 def parse_matrix_string(matrix_str: str) -> np.ndarray:
     """
