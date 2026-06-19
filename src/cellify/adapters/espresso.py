@@ -1,3 +1,7 @@
+"""
+Quantum ESPRESSO input/output adapter for cellify.
+"""
+
 import os
 import re
 from typing import Any, Dict, Tuple
@@ -18,11 +22,12 @@ class EspressoAdapter(BaseAdapter):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Input file not found: {filepath}")
 
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             content: str = f.read()
 
         # Safely parse structure using ASE espresso-in reader
         try:
+            # pylint: disable=import-outside-toplevel
             from ase.io import read as ase_read
             from pymatgen.io.ase import AseAtomsAdaptor
 
@@ -31,7 +36,7 @@ class EspressoAdapter(BaseAdapter):
         except Exception as ase_err:
             raise ValueError(
                 f"Failed to parse structure from Quantum ESPRESSO file: {ase_err}"
-            )
+            ) from ase_err
 
         meta_data: Dict[str, Any] = {
             "mode": "espresso_text_replace",
@@ -112,7 +117,7 @@ class EspressoAdapter(BaseAdapter):
             )
 
         # 6. Save file
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(cleaned_content)
             f.write(species_str)
             f.write(cell_str)

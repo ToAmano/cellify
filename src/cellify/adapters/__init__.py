@@ -1,6 +1,12 @@
+"""
+I/O Adapters package for cellify.
+"""
+
 from cellify.adapters.base import BaseAdapter
 from cellify.adapters.espresso import EspressoAdapter
 from cellify.adapters.standard import StandardAdapter
+
+__all__ = ["BaseAdapter", "EspressoAdapter", "StandardAdapter"]
 
 
 def get_adapter(filepath: str) -> BaseAdapter:
@@ -17,5 +23,4 @@ def get_adapter(filepath: str) -> BaseAdapter:
 
     if is_qe:
         return EspressoAdapter()
-    else:
-        return StandardAdapter()
+    return StandardAdapter()

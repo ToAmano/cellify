@@ -21,7 +21,6 @@ class BaseAdapter(ABC):
         Returns:
             Tuple[Structure, Dict[str, Any]]: A tuple of the pymatgen Structure object and a metadata dictionary.
         """
-        pass
 
     @abstractmethod
     def write(
@@ -35,4 +34,3 @@ class BaseAdapter(ABC):
             structure (Structure): The modified/supercell Structure object.
             meta_data (Dict[str, Any]): Metadata retrieved during the read phase.
         """
-        pass

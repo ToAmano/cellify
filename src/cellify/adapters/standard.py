@@ -1,3 +1,7 @@
+"""
+Standard file format adapter for cellify (VASP POSCAR, CIF, XYZ, etc.).
+"""
+
 from typing import Any, Dict, Tuple
 
 from pymatgen.core import Structure
