@@ -6,6 +6,7 @@ This directory contains practical examples to demonstrate how to use `cellify` f
 1. [VASP Supercell & Doping (POSCAR)](./1_vasp_supercell)
 2. [Quantum ESPRESSO Parameter Preservation (qe.in)](./2_espresso_doping)
 3. [Primitive to Conventional Cell Conversion (POSCAR_primitive)](./3_primitive_to_conventional)
+4. [3C-SiC Primitive-to-Conventional Supercell (3csic.in)](./4_espresso_supercell)
 
 ---
 
@@ -26,6 +27,10 @@ bash run.sh
 
 # Example 3: Primitive to Conventional Conversion
 cd ../3_primitive_to_conventional
+bash run.sh
+
+# Example 4: 3C-SiC QE Conversion & Supercell
+cd ../4_espresso_supercell
 bash run.sh
 ```
 
