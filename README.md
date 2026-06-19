@@ -35,6 +35,7 @@ A user-friendly command-line interface (CLI) tool to quickly, intuitively, and a
     *   FHI-aims (`geometry.in`)
 
 ### ② Flexible Cell Expansion (Supercell Generation)
+*   **Conventional Cell Auto-Conversion**: Automatically transforms loaded structures (e.g. primitive cells) into their standard conventional representation using `--conventional`.
 *   **Diagonal Scaling**: Simplest integer multiplication along lattice axes (e.g., `2 2 2`).
 *   **Matrix-Based Redefinition**: Redefine lattices using an arbitrary $3 \times 3$ transformation matrix. Ideal for orthogonalizing hexagonal cells or extracting specific crystal orientations.
 *   **Minimum Distance (Cutoff) Automatic Scaling**:
@@ -97,6 +98,7 @@ cellify -i <input_file> -o <output_file> [options]
 *   `-d`, `--dim` : Diagonal scaling factors. 3 integers separated by spaces (e.g., `--dim 2 2 2`).
 *   `-m`, `--matrix` : $3 \times 3$ transformation matrix. Specify row values separated by spaces, rows separated by slashes/commas/semicolons (e.g., `--matrix "1 -1 0 / 1 1 0 / 0 0 2"`).
 *   `--min-dist` : Automatically generate a supercell with minimum periodic image distance $\ge$ specified distance (in $\text{Å}$).
+*   `--conventional` : Automatically convert the input structure to its standard conventional representation before applying other operations.
 *   `--substitute` : Substitution rule. Format: `element:target_element:index_or_percentage` (e.g., `--substitute "Si:P:0"` or `--substitute "Si:Al:5%"`).
 *   `--vacancy` : Vacancy rule. Format: `element:index_or_count` (e.g., `--vacancy "Si:0"`, `--vacancy "O:2"`_).
 *   `--slab` : Miller indices $h\ k\ l$ for surface slab model creation (e.g., `--slab 1 1 1`).
@@ -131,6 +133,11 @@ cellify -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
 ### 5. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
 ```bash
 cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
+```
+
+### 6. Convert a primitive Silicon cell to conventional cell and scale it to 2x2x2
+```bash
+cellify -i Si_primitive.POSCAR -o Si_conventional_222.POSCAR --conventional --dim 2 2 2
 ```
 
 ---

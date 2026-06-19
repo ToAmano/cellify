@@ -7,8 +7,8 @@
     outdir='./out'
  /
  &system
-    ibrav = 0, 
-    nat = 64, 
+    ibrav = 0,
+    nat = 64,
     ntyp = 1,
     ecutwfc = 20.0
  /

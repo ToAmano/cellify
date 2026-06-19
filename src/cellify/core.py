@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from pymatgen.core import Structure
 from pymatgen.core.surface import SlabGenerator
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from cellify.adapters import BaseAdapter, get_adapter
 
@@ -31,6 +32,14 @@ def save_structure_file(
     """
     adapter: BaseAdapter = get_adapter(filepath)
     adapter.write(filepath, structure, meta_data)
+
+
+def convert_to_conventional(structure: Structure) -> Structure:
+    """
+    Finds and returns the standard conventional cell of the structure.
+    """
+    sga = SpacegroupAnalyzer(structure)
+    return sga.get_conventional_standard_structure()
 
 
 def parse_matrix_string(matrix_str: str) -> np.ndarray:

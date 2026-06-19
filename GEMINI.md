@@ -14,6 +14,7 @@ To provide a command-line (CLI) tool that allows researchers to "easily" generat
 2.  **Requirements Definition (README.md)**: Defined specifications including "Calculation-ready input files (especially QE `nat` auto-updates)" and "Automatic scaling based on minimum periodic distances".
 3.  **Naming Decision**: Chose **`cellify`** over other candidates like `scel` to support future general structure-modeling extensions.
 4.  **GitHub Connection**: Created and connected a public repository: `ToAmano/cellify`.
+5.  **Conventional Cell Conversion (Issue #5)**: Added `--conventional` flag to automatically convert primitive cells (commonly downloaded from materials databases) into conventional cells before performing other operations. This ensures intuitive defect index modeling and surface slab cutting.
 
 ---
 

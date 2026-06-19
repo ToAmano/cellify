@@ -16,6 +16,7 @@ from cellify.core import (
     apply_substitutions,
     apply_vacancies,
     calculate_min_dist_scaling,
+    convert_to_conventional,
     generate_surface_slab,
     load_structure_file,
     parse_matrix_string,
@@ -67,6 +68,11 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         type=float,
         metavar="DISTANCE",
         help="Automatically generate a supercell where the minimum distance between periodic images is >= DISTANCE (in Angstroms)",
+    )
+    parser.add_argument(
+        "--conventional",
+        action="store_true",
+        help="Automatically convert the input structure to its standard conventional representation before applying other operations.",
     )
 
     # Doping / Defect options
@@ -208,6 +214,11 @@ def main() -> None:
         sys.exit(1)
 
     _print_structure_summary(structure)
+
+    # 0. Conventional cell conversion
+    if args.conventional:
+        print("Converting structure to standard conventional cell...")
+        structure = convert_to_conventional(structure)
 
     # 1. Supercell generation
     _apply_supercell(structure, args)
