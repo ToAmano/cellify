@@ -1,0 +1,55 @@
+name: Auto Release on Version Bump
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  autorelease:
+    name: Check version and create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history and tags
+
+      - name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(python -c "
+          with open('src/cellify/__init__.py') as f:
+              for line in f:
+                  if '__version__' in line:
+                      print(line.split('=')[1].strip().strip('\"\''))
+                      break
+          ")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          TAG_NAME="v${{ env.VERSION }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists. Skipping release."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG_NAME does not exist. A new release will be created."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="v${{ env.VERSION }}"
+          echo "Creating release for $TAG_NAME..."
+          gh release create "$TAG_NAME" \
+            --title "$TAG_NAME" \
+            --generate-notes
