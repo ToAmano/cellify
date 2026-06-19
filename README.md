@@ -124,14 +124,31 @@ dft-supercell -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 -
 
 ---
 
-## 5. 技術選定・開発アプローチ
+## 5. ディレクトリ構成
+
+プロジェクトの標準的なディレクトリ構成（src-layout）は以下の通りです。
+
+```text
+cellify/
+├── README.md
+├── NAMES.md
+├── pyproject.toml
+└── src/
+    └── cellify/
+        ├── __init__.py
+        ├── cli.py      # コマンドライン引数の処理
+        ├── core.py     # スーパーセル生成等のコアロジック (pymatgen/ASEの呼び出し)
+        └── parser.py   # 計算パラメータのパース・書き換えロジック (QE等用)
+```
+
+## 6. 技術選定・開発アプローチ
 
 1.  **言語**: **Python 3** (科学計算・DFTエコシステムとの親和性が極めて高いため)
-2.  **コアライブラリ**: **ASE (Atomic Simulation Environment)** をバックエンドとして利用。
-    *   ファイルの自動判別（`ase.io.read`, `ase.io.write`）が非常に優秀。
-    *   スーパーセル変換ロジック（`ase.build.make_supercell`）が頑健。
-    *   スラブ生成（`ase.build.surface`）のビルトイン関数が利用可能。
+2.  **コアライブラリ**: **pymatgen** および **ASE (Atomic Simulation Environment)** を組み合わせて利用。
+    *   **pymatgen**: 結晶構造の対称性判定、欠陥モデリング、界面構築（将来の拡張）などの高度な構造分析およびQE等のパラメータパースに利用。
+    *   **ASE**: 広範なファイルフォーマットの自動判別入出力、およびシンプルかつ頑健なスラブ生成機能などに利用。
+    *   両者は `pymatgen.io.ase.AseAtomsAdaptor` を通じて相互変換しながら適材適所で呼び出します。
 3.  **パッケージング**:
     *   `pip` / `uv` で簡単にインストール可能にする。
     *   `pyproject.toml` による管理。
-    *   スタンドアロンな実行ファイル（`dft-supercell` コマンド）としてインストールされるように設定。
+    *   インストール時に `cellify` コマンドとして登録されるように設定。
