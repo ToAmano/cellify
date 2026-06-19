@@ -9,8 +9,12 @@ def get_adapter(filepath: str) -> BaseAdapter:
     """
     lower_path: str = filepath.lower()
     # Check if the file is a Quantum ESPRESSO input file
-    is_qe: bool = any(lower_path.endswith(ext) for ext in [".in", ".qe", ".pwi"]) or "qe" in lower_path or "espresso" in lower_path
-    
+    is_qe: bool = (
+        any(lower_path.endswith(ext) for ext in [".in", ".qe", ".pwi"])
+        or "qe" in lower_path
+        or "espresso" in lower_path
+    )
+
     if is_qe:
         return EspressoAdapter()
     else:
