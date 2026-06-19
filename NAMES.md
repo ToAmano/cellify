@@ -1,27 +1,27 @@
-# DFTスーパーセル生成ツールの名称候補
+# Name Candidates for the DFT Supercell Generator Tool
 
-本ツールのアイデンティティ（手軽さ、DFTパラメータ維持、最小距離による自動拡張など）を表現し、コマンドラインで打ちやすく、印象に残りやすい名称候補をいくつか提案します。
+A list of command-line name candidates representing the tool's identity (ease of use, parameter preservation, automatic expansion based on periodic distances, etc.), which are easy to type and memorable.
 
 ---
 
-## 提案候補一覧
+## Proposed Name Candidates
 
-| 候補名 | 読み方 | コマンド例 | 特徴・メリット・由来 |
+| Name | Pronunciation | Command Example | Description & Origin |
 | :--- | :--- | :--- | :--- |
-| **`scel`** | エス・セル | `scel -i POSCAR -o SPOSCAR -d 2 2 2` | **【推薦】** **S**uper**cel**lの略。非常に短く、タイピングしやすいためCLIコマンドとして最適。既存の一般的な用語と被りづらい。 |
-| **`cellify`** | セリファイ | `cellify -i qe.in --min-dist 15.0` | 「セル化する」「スーパーセルにする」という動詞。モダンなツール感があり、親しみやすく覚えやすい。 |
-| **`dftsc`** | ディー・エフ・ティー・エス・シー | `dftsc -i POSCAR -o SPOSCAR` | **D**FT **S**uper**c**ellの略。DFT用であることが一目でわかり、短く無駄がない。 |
-| **`readycell`** | レディ・セル | `readycell -i qe.in -o qe_super.in` | **Calculation-ready**（パラメータ維持・自動書き換えでそのまま計算可能）なセルを作る、という本ツールの最大の強みを前面に出した名称。 |
-| **`scgen`** | エス・シー・ジェン | `scgen -i input.cif -d 2 2 2` | **S**uper**c**ell **Gen**eratorの略。目的が最も明確に伝わるオーソドックスな名前。 |
-| **`autosuper`** | オート・スーパー | `autosuper -i POSCAR --min-dist 12.0` | 最小距離に基づいて最適なスーパーセルを**自動（Auto）**で生成するスマートな機能に焦点を当てた名前。 |
+| **`scel`** | s-cell | `scel -i POSCAR -o SPOSCAR -d 2 2 2` | Short for **S**uper**cel**l. Extremely short and optimal for CLI typing. Least prone to command conflicts. |
+| **`cellify`** | cell-i-fy | `cellify -i qe.in --min-dist 15.0` | **【Selected】** A verb meaning "to convert into a cell" or "to supercell". Sounds modern, friendly, and easy to remember. |
+| **`dftsc`** | d-f-t-s-c | `dftsc -i POSCAR -o SPOSCAR` | Short for **D**FT **S**uper**c**ell. Immediately conveys its DFT-specific usage and contains no fluff. |
+| **`readycell`** | ready-cell | `readycell -i qe.in -o qe_super.in` | Highlights the tool's core feature of creating **Calculation-ready** inputs (preserving calculations and updating headers automatically). |
+| **`scgen`** | s-c-gen | `scgen -i input.cif -d 2 2 2` | Short for **S**uper**c**ell **Gen**erator. An orthodox name that clearly defines its purpose. |
+| **`autosuper`** | auto-super | `autosuper -i POSCAR --min-dist 12.0` | Focuses on the smart feature of **automatically (Auto)** generating the optimal supercell based on a specified distance constraint. |
 
 ---
 
-## 選定のポイント
+## Selection Criteria
 
-1.  **コマンドの打ちやすさ (CLI Ergonomics)**:
-    *   `scel` や `dftsc` は 4〜5 文字で非常に打ちやすいです。
-    *   `cellify` や `scgen` はスペルミスが起きにくく直感的です。
-2.  **パッケージ名 (PyPI)**:
-    *   Pythonパッケージとして配布する際、PyPIで重複していない（あるいは類似パッケージと区別しやすい）名前が好ましいです。
-    *   `scel` や `cellify` はシンプルで空いている可能性が高い魅力的な名前です。
+1.  **CLI Ergonomics**:
+    *   `scel` and `dftsc` are only 4–5 characters, making them highly efficient to type.
+    *   `cellify` and `scgen` are easy to type without spelling errors.
+2.  **PyPI Package Availability**:
+    *   Ensures that when publishing the tool to PyPI, it does not conflict with existing packages.
+    *   `cellify` is clear, clean, and stands out as a unique and descriptive project name.

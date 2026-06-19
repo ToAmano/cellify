@@ -23,7 +23,7 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         "-v", "--version", action="version", version=f"cellify {__version__}"
     )
     
-    # I/O
+    # I/O options
     parser.add_argument(
         "-i", "--input", required=True, help="Input structure file path (e.g. POSCAR, input.cif, qe.in)"
     )
@@ -141,6 +141,7 @@ def main() -> None:
     # Determine default output filename if not specified
     if not args.output:
         base, ext = os.path.splitext(args.input)
+        # Special case: VASP files like POSCAR or CONTCAR with no extension
         if not ext and base in ["POSCAR", "CONTCAR"]:
             args.output = f"{base}_supercell"
         else:

@@ -4,8 +4,9 @@ from cellify.adapters.base import BaseAdapter
 
 class StandardAdapter(BaseAdapter):
     """
-    VASP (POSCAR), CIF, XYZ などの一般的な結晶構造ファイル用の I/O アダプター。
-    特別なパラメータ維持処理は行わず、pymatgenの標準機能を用いて直接入出力を行います。
+    Standard structure file adapter for formats like VASP (POSCAR), CIF, XYZ, etc.
+    Does not perform parameter-preserving text replacements, and uses pymatgen's
+    default I/O functionalities.
     """
     
     def read(self, filepath: str) -> Tuple[Structure, Dict[str, Any]]:

@@ -1,132 +1,123 @@
-# dft-supercell (仮称)
+# cellify
 
-DFT計算（VASP, Quantum ESPRESSO, OpenMX, CP2Kなど）のワークフローにおいて、単位胞（Unit Cell）からスーパーセル（Supercell）を高速、直感的、かつ高度に生成するためのCLI（Command Line Interface）ツールです。
-
-本ドキュメントは、DFT計算を実行する研究者が「真に満足する機能と使い勝手」を整理した要件定義書を兼ねています。
+A user-friendly command-line interface (CLI) tool to quickly, intuitively, and advancedly generate supercells and calculation-ready inputs from unit cells in density functional theory (DFT) calculation workflows (VASP, Quantum ESPRESSO, OpenMX, CP2K, etc.).
 
 ---
 
-## 1. ターゲットユーザーと主要なペインポイント
+## 1. Target Users and Pain Points
 
-### ターゲットユーザー
-*   第一原理計算（DFT）を用いて、結晶、界面、表面、欠陥、アモルファスなどをシミュレーションする材料科学・物理・化学分野の研究者。
+### Target Users
+*   Researchers in materials science, physics, and chemistry simulating crystals, interfaces, surfaces, defects, and amorphous structures using DFT.
 
-### 既存ツールの不満点（ペインポイント）
-1.  **「ASEやPymatgenは強力だが、Pythonスクリプトを書くのが面倒」**
-    *   ちょっとしたスーパーセルを作りたいだけなのに、毎回Pythonを立ち上げて `read`、`make_supercell`、`write` を書くのが煩わしい。
-2.  **「cif2cellや他ツールのインストールが壊れやすい」**
-    *   古いPythonやコンパイル依存があり、環境構築でつまずく。
-3.  **「非対角の変換行列（斜方化など）の指定が直感的でない」**
-    *   六方晶から斜方晶への変換や、特定方位の切り出しをCLIからサクッと行いたい。
-4.  **「欠陥計算で『周期境界条件の干渉を避けるサイズ』を手計算するのが面倒」**
-    *   欠陥同士が十分離れる（例：$15\ \text{Å}$ 以上）最小のスーパーセルを自動で求めてほしい。
-5.  **「表面スラブの作成や真空層の挿入を別ツールで行うのが手間で、ミスが起きやすい」**
+### Current Pain Points (Limitations of Existing Tools)
+1.  **"ASE and Pymatgen are powerful, but writing Python scripts is tedious"**
+    *   Writing scripts with `read`, `make_supercell`, and `write` just to create a quick supercell is annoying.
+2.  **"cif2cell and other tools are prone to broken installations"**
+    *   Older python dependencies or compilation issues often cause setup problems.
+3.  **"Specifying non-diagonal transformation matrices (orthogonalization, etc.) is unintuitive"**
+    *   Quickly redefining lattices or cutting specific orientations from a terminal is difficult.
+4.  **"Calculating sizes to avoid periodic boundary interferences is tedious"**
+    *   Manually finding the smallest cell configuration to keep defect-to-defect distances above a threshold (e.g., $15\ \text{Å}$) is time-consuming.
+5.  **"Creating surface slab models and inserting vacuum layers in separate tools is prone to errors"**
 
 ---
 
-## 2. 機能要件 (Requirements)
+## 2. Requirements & Features
 
-### ① フォーマットフリーな相互変換
-*   入力および出力のファイル拡張子またはヘッダーからフォーマットを自動判別する。
-*   **対応フォーマット**:
+### ① Format-Free Multi-Format Conversion
+*   Automatically determines file formats from file extensions or headers.
+*   **Supported Formats**:
     *   VASP (`POSCAR`, `CONTCAR`)
-    *   Quantum ESPRESSO (`.in`, `.txt`)
+    *   Quantum ESPRESSO (`.in`, `.txt`, `.qe`)
     *   Crystallographic Information File (`.cif`)
     *   XCrysDen Structure Format (`.xsf`, `.axsf`)
     *   XYZ format (`.xyz`)
     *   FHI-aims (`geometry.in`)
-    *   LAMMPS structure data (オプション)
 
-### ② 柔軟なセル拡張（スーパーセル生成）
-*   **対角拡張**: 軸方向に単純な整数倍で拡張。
-    *   例: `2 2 2` 倍
-*   **行列指定（任意変換）**: $3 \times 3$ の変換行列を指定して、結晶格子を再定義。斜方化（Orthogonalization）や特殊な方位の切り出しに対応。
-    *   例: `[[1,-1,0], [1,1,0], [0,0,2]]`
-*   **最小距離（カットオフ）指定自動拡張 【研究者大歓喜機能】**:
-    *   「各原子の周期境界における隣接距離が $d\ \text{Å}$ 以上となる最小のスーパーセル（あるいは指定軸方向の最小サイズ）」を自動で計算して生成する。孤立欠陥やフォノン計算のセル作成を自動化。
+### ② Flexible Cell Expansion (Supercell Generation)
+*   **Diagonal Scaling**: Simplest integer multiplication along lattice axes (e.g., `2 2 2`).
+*   **Matrix-Based Redefinition**: Redefine lattices using an arbitrary $3 \times 3$ transformation matrix. Ideal for orthogonalizing hexagonal cells or extracting specific crystal orientations.
+*   **Minimum Distance (Cutoff) Automatic Scaling**:
+    *   Automatically calculates and generates the smallest diagonal supercell (or specific axis dimensions) that guarantees the distance between periodic images of any atom is $\ge d\ \text{Å}$. Extremely useful for defect and phonon calculations.
 
-### ③ 欠陥・置換（Doping / Vacancy）の簡易モデリング
-*   **置換（Substitution）**: スーパーセル生成と同時に、特定の原子を別の元素に置換する。
-    *   インデックス指定（例：0番目の原子をPに）
-    *   割合指定（例：Siの $5\%$ をPにランダム置換、ただし対称性を崩さないオプション等）
-*   **空孔（Vacancy）**: 指定したインデックスや元素の原子を削除する。
+### ③ Easy Defect & Doping Modeling
+*   **Substitutions**: Replace specific atoms at a given index (e.g., replacing Si at index 0 with P) or randomly replace a specified percentage of atoms (e.g., replacing $5\%$ of Si atoms with Al).
+*   **Vacancies**: Remove atoms at specific indices or randomly delete a specified count of a given element.
 
-### ④ 表面スラブ（Slab）モデル生成
-*   ミラー指数 $(h, k, l)$ を指定してバルクから表面を切り出し、指定した厚み（層数または $\text{Å}$）および真空層（Vacuum layer）を挿入したスラブモデルを直接出力する。
+### ④ Surface Slab Generation
+*   Cut a surface slab from bulk structures by specifying Miller indices $(h, k, l)$, slab thickness (in $\text{Å}$ or layers), and vacuum thickness (in $\text{Å}$).
 
-### ⑤ 物理量・情報のレポート
-*   実行時に以下の情報を標準エラー出力（またはログ）に表示する。
-    *   元セルの体積、原子数、結晶系
-    *   生成されたスーパーセルの体積、原子数、格子定数、分数座標
-    *   適用された変換行列
-    *   最小原子間距離（周期境界を考慮）
+### ⑤ Logging and Metadata Analysis
+*   Outputs structure logs to stderr during execution:
+    *   Initial volume, atom count, and reduced formula.
+    *   Final supercell volume, lattice constants, lattice angles, and atom count.
+    *   Applied transformation matrix.
+    *   Minimum atomic distance under periodic boundary conditions.
 
-### ⑥ 計算可能（Calculation-ready）な入力ファイルの生成 【極めて重要】
-*   Quantum ESPRESSO (QE) などのように、計算制御パラメータ（`&CONTROL`, `&SYSTEM` 等のネームリスト）と構造座標データが1ファイルに混在しているフォーマットの場合、元のパラメータ設定を完全に維持して出力する。
-*   さらに、スーパーセル化や元素置換に伴って変更が必要になる以下のパラメータを**自動検出して動的に書き換える**。
-    *   **原子数 (`nat`)**: スーパーセル化された後の総原子数に自動更新。
-    *   **原子種数 (`ntyp`)**: ドーピングや置換によって新しい元素が導入された場合、その数を自動インクリメント。
-    *   **原子種情報 (`ATOMIC_SPECIES`)**: 新たに導入された元素の質量や擬ポテンシャルファイル名（プレースホルダーまたは自動推定）を追加。
+### ⑥ Calculation-Ready Input Generation
+*   For formats like Quantum ESPRESSO where calculation parameters and coordinates coexist in a single file, the original parameters (`&CONTROL`, `&SYSTEM`, etc.) and comments are completely preserved.
+*   The following parameters are automatically updated to match the generated supercell structure:
+    *   **Total number of atoms (`nat`)**: Automatically updated to the supercell atom count.
+    *   **Number of atomic types (`ntyp`)**: Dynamically incremented if new elements are added via doping.
+    *   **Atomic species definitions (`ATOMIC_SPECIES`)**: Automatically appends definitions (mass, pseudopotentials) for newly introduced elements.
 
 ---
 
-## 3. CLIデザイン（ユーザーインターフェース案）
+## 3. CLI Design
 
-### コマンドライン引数設計
+### Command-Line Arguments
 
 ```bash
-# 基本形
-dft-supercell -i <input_file> -o <output_file> [options]
+cellify -i <input_file> -o <output_file> [options]
 ```
 
-#### 引数一覧
-*   `-i`, `--input` : 入力構造ファイルパス（必須）
-*   `-o`, `--output` : 出力構造ファイルパス（省略時は標準出力、または `input_supercell.<ext>`）
-*   `-d`, `--dim` : 対角スケーリング因子。スペース区切りで3つの整数を指定（例: `--dim 2 2 2`）
-*   `-m`, `--matrix` : $3 \times 3$ の変換行列。カンマとスラッシュ、またはスペース区切りで指定（例: `--matrix "1 -1 0 / 1 1 0 / 0 0 2"`)
-*   `--min-dist` : 周期境界条件下で原子間（または同種原子間）の最小距離がこの値（$\text{Å}$）以上になる最小のスーパーセルを自動生成
-*   `--substitute` : 置換ルール。`元素:置換先:インデックスまたは割合`（例: `--substitute "Si:P:0"` または `--substitute "Si:Al:5%"`）
-*   `--vacancy` : 空孔ルール。`元素:インデックスまたは数`（例: `--vacancy "Si:0"`, `--vacancy "O:2"`)
-*   `--slab` : ミラー指数 $h\ k\ l$。スラブモデル生成時に使用（例: `--slab 1 1 1`)
-*   `--thick` : スラブの厚み（$\text{Å}$ または層数）（例: `--thick 15.0`)
-*   `--vacuum` : 挿入する真空層の厚み（$\text{Å}$）（例: `--vacuum 15.0`）
+#### Arguments List
+*   `-i`, `--input` : Input structure file path (Required).
+*   `-o`, `--output` : Output structure file path (Default: `<input_base>_supercell.<ext>`).
+*   `-d`, `--dim` : Diagonal scaling factors. 3 integers separated by spaces (e.g., `--dim 2 2 2`).
+*   `-m`, `--matrix` : $3 \times 3$ transformation matrix. Specify row values separated by spaces, rows separated by slashes/commas/semicolons (e.g., `--matrix "1 -1 0 / 1 1 0 / 0 0 2"`).
+*   `--min-dist` : Automatically generate a supercell with minimum periodic image distance $\ge$ specified distance (in $\text{Å}$).
+*   `--substitute` : Substitution rule. Format: `element:target_element:index_or_percentage` (e.g., `--substitute "Si:P:0"` or `--substitute "Si:Al:5%"`).
+*   `--vacancy` : Vacancy rule. Format: `element:index_or_count` (e.g., `--vacancy "Si:0"`, `--vacancy "O:2"`_).
+*   `--slab` : Miller indices $h\ k\ l$ for surface slab model creation (e.g., `--slab 1 1 1`).
+*   `--thick` : Slab thickness in $\text{Å}$ or layers (e.g., `--thick 15.0`).
+*   `--vacuum` : Vacuum layer thickness in $\text{Å}$ (e.g., `--vacuum 15.0`).
 
 ---
 
-## 4. ユースケース（使用例）
+## 4. Use Cases
 
-### 1. シンプルな $2 \times 2 \times 3$ スーパーセルの作成 (VASP POSCAR)
+### 1. Create a simple $2 \times 2 \times 3$ supercell (VASP POSCAR)
 ```bash
-dft-supercell -i POSCAR -o POSCAR_223 --dim 2 2 3
+cellify -i POSCAR -o POSCAR_223 --dim 2 2 3
 ```
 
-### 2. 六方晶セルの斜方化 (Quantum ESPRESSO 入力)
+### 2. Orthogonalize a hexagonal cell (Quantum ESPRESSO input)
 ```bash
-# 元の qe.in に含まれる &CONTROL や &SYSTEM 等のパラメータは維持され、
-# nat や CELL_PARAMETERS, ATOMIC_POSITIONS のみが自動更新された実行可能な qe_ortho.in が出力されます。
-dft-supercell -i qe.in -o qe_ortho.in --matrix "1 -1 0 / 1 1 0 / 0 0 1"
+# Preserves &CONTROL and &SYSTEM settings, and updates nat, CELL_PARAMETERS, and ATOMIC_POSITIONS
+cellify -i qe.in -o qe_ortho.in --matrix "1 -1 0 / 1 1 0 / 0 0 1"
 ```
 
-### 3. $15\ \text{Å}$ 以上の距離を担保する最小スーパーセルの自動生成（欠陥計算用）
+### 3. Generate the smallest supercell keeping defect distance $\ge 15\ \text{Å}$
 ```bash
-dft-supercell -i POSCAR -o POSCAR_defect_bulk --min-dist 15.0
+cellify -i POSCAR -o POSCAR_defect_bulk --min-dist 15.0
 ```
 
-### 4. シリコンのスーパーセルを作成し、1原子をリン(P)に置換する（n型ドープモデル）
+### 4. Create a silicon supercell and replace 1 atom with Phosphorus (n-type doped model)
 ```bash
-dft-supercell -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
+cellify -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
 ```
 
-### 5. $\text{SrTiO}_3$ の (100) 表面スラブモデル（真空層 $15\ \text{Å}$）の作成
+### 5. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
 ```bash
-dft-supercell -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
+cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
 ```
 
 ---
 
-## 5. ディレクトリ構成
+## 5. Directory Structure
 
-プロジェクトの標準的なディレクトリ構成（src-layout）は以下の通りです。
+This project uses the standard Python `src-layout`:
 
 ```text
 cellify/
@@ -136,24 +127,25 @@ cellify/
 └── src/
     └── cellify/
         ├── __init__.py
-        ├── cli.py            # コマンドライン引数の処理
-        ├── core.py           # スーパーセル、欠陥、スラブ生成などの共通モデリングロジック
-        └── adapters/         # 計算ソフト固有のパラメータ維持・I/Oアダプターパッケージ
+        ├── cli.py            # Command-line argument parsing and execution flow
+        ├── core.py           # Pure geometric modeling (supercell, defect, slab creation)
+        └── adapters/         # Software-specific file I/O and parameter-preservation adapters
             ├── __init__.py
-            ├── base.py       # アダプターの共通抽象インターフェース
-            ├── espresso.py   # Quantum ESPRESSO用アダプター
-            └── standard.py   # VASPやCIFなど汎用フォーマット用アダプター
+            ├── base.py       # Abstract base class for I/O adapters
+            ├── espresso.py   # Quantum ESPRESSO adapter
+            └── standard.py   # VASP/CIF generic format adapter
 ```
 
+---
 
-## 6. 技術選定・開発アプローチ
+## 6. Technical Stack & Development Approach
 
-1.  **言語**: **Python 3** (科学計算・DFTエコシステムとの親和性が極めて高いため)
-2.  **コアライブラリ**: **pymatgen** および **ASE (Atomic Simulation Environment)** を組み合わせて利用。
-    *   **pymatgen**: 結晶構造の対称性判定、欠陥モデリング、界面構築（将来の拡張）などの高度な構造分析およびQE等のパラメータパースに利用。
-    *   **ASE**: 広範なファイルフォーマットの自動判別入出力、およびシンプルかつ頑健なスラブ生成機能などに利用。
-    *   両者は `pymatgen.io.ase.AseAtomsAdaptor` を通じて相互変換しながら適材適所で呼び出します。
-3.  **パッケージング**:
-    *   `pip` / `uv` で簡単にインストール可能にする。
-    *   `pyproject.toml` による管理。
-    *   インストール時に `cellify` コマンドとして登録されるように設定。
+1.  **Language**: **Python 3** (High affinity with scientific and DFT software ecosystems).
+2.  **Core Libraries**: **pymatgen** and **ASE (Atomic Simulation Environment)**.
+    *   **pymatgen**: Used for symmetry determination, structure analysis, defect modulations, and advanced slab generations.
+    *   **ASE**: Used for format-free structure loading/writing and robust file parsed operations.
+    *   Conversion between both frameworks is done seamlessly via `pymatgen.io.ase.AseAtomsAdaptor`.
+3.  **Packaging**:
+    *   Managed via `pyproject.toml` using `hatchling` as the build backend.
+    *   Installable in editable mode using `pip install -e ".[test]"`.
+    *   Registers `cellify` command as an entry point upon installation.

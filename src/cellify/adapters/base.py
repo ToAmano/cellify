@@ -4,32 +4,31 @@ from pymatgen.core import Structure
 
 class BaseAdapter(ABC):
     """
-    cellify がサポートする結晶構造ファイルの入出力を抽象化する基底クラス。
-    各DFT計算ソフトに特化したパラメータ引き継ぎロジックは、このクラスを継承して実装します。
+    Abstract base class for structure file I/O supported by cellify.
+    Parameter-preserving and software-specific output adapters should inherit this class.
     """
     
     @abstractmethod
     def read(self, filepath: str) -> Tuple[Structure, Dict[str, Any]]:
         """
-        結晶構造ファイルをロードし、構造オブジェクトとパースメタデータを返します。
+        Loads a structure file and returns the structure object along with metadata.
         
         Args:
-            filepath (str): 読み込み対象のファイルパス
+            filepath (str): Path to the input file.
             
         Returns:
-            Tuple[Structure, Dict[str, Any]]: (Structureオブジェクト, メタデータ辞書)
+            Tuple[Structure, Dict[str, Any]]: A tuple of the pymatgen Structure object and a metadata dictionary.
         """
         pass
 
     @abstractmethod
     def write(self, filepath: str, structure: Structure, meta_data: Dict[str, Any]) -> None:
         """
-        構造オブジェクトを指定されたパスに書き出します。
-        メタデータ（元の計算パラメータやコメントなど）が存在する場合は引き継ぎます。
+        Writes the structure to the specified path while preserving original metadata.
         
         Args:
-            filepath (str): 書き出し先のファイルパス
-            structure (Structure): スーパーセル化・修飾後の Structure オブジェクト
-            meta_data (Dict[str, Any]): read 時に取得したメタデータ
+            filepath (str): Path to the output file.
+            structure (Structure): The modified/supercell Structure object.
+            meta_data (Dict[str, Any]): Metadata retrieved during the read phase.
         """
         pass

@@ -6,9 +6,9 @@ from cellify.adapters.base import BaseAdapter
 
 class EspressoAdapter(BaseAdapter):
     """
-    Quantum ESPRESSO 入力ファイル用の I/O アダプター。
-    元の制御・計算パラメータ（&CONTROL, &SYSTEM等）やコメント行を完全に保護したまま、
-    nat, ntyp を自動更新し、構造座標ブロックのみを置換して書き出します。
+    Quantum ESPRESSO input file adapter.
+    Preserves calculation parameters (&CONTROL, &SYSTEM, etc.) and comment lines,
+    while automatically updating nat/ntyp and replacing structure sections.
     """
     
     def read(self, filepath: str) -> Tuple[Structure, Dict[str, Any]]:
@@ -18,7 +18,7 @@ class EspressoAdapter(BaseAdapter):
         with open(filepath, 'r') as f:
             content: str = f.read()
 
-        # 構造データをASE経由で安全にロードしてpymatgen Structureに変換
+        # Safely parse structure using ASE espresso-in reader
         try:
             from ase.io import read as ase_read
             from pymatgen.io.ase import AseAtomsAdaptor
@@ -37,25 +37,25 @@ class EspressoAdapter(BaseAdapter):
     def write(self, filepath: str, structure: Structure, meta_data: Dict[str, Any]) -> None:
         content: str = meta_data["content"]
         
-        # 1. 新しい原子数と原子種数を計算
+        # 1. Calculate new nat and ntyp
         nat_new: int = len(structure)
         ntyp_new: int = len(structure.composition.elements)
         
-        # 2. ネームリスト内の nat と ntyp を更新
+        # 2. Update nat and ntyp inside namelists
         content = re.sub(r'(\bnat\s*=\s*)\d+', r'\g<1>' + str(nat_new), content, flags=re.IGNORECASE)
         content = re.sub(r'(\bntyp\s*=\s*)\d+', r'\g<1>' + str(ntyp_new), content, flags=re.IGNORECASE)
         
-        # 3. 元の構造関連ブロックをテキストから除去
+        # 3. Strip old structure-related blocks from text
         cleaned_content: str = content
         struct_keywords = ["ATOMIC_SPECIES", "CELL_PARAMETERS", "ATOMIC_POSITIONS"]
         for kw in struct_keywords:
             pattern = r'(?i)^\s*' + kw + r'\b.*?(?=\n\s*(?:ATOMIC_SPECIES|CELL_PARAMETERS|ATOMIC_POSITIONS|K_POINTS|KPOINTS|&[A-Za-z]+)|\Z)'
             cleaned_content = re.sub(pattern, '', cleaned_content, flags=re.DOTALL | re.MULTILINE)
         
-        # 前後の余分な改行を整理
+        # Clean extra leading/trailing whitespaces
         cleaned_content = cleaned_content.strip() + "\n\n"
         
-        # 4. 元ファイルから擬ポテンシャル情報を抽出
+        # 4. Extract existing pseudopotential information from the original file
         pseudos: Dict[str, Any] = {}
         species_match = re.search(r'(?i)ATOMIC_SPECIES\s*\n(.*?)(?=\n\s*(?:ATOMIC_|CELL_|K_POINTS|KPOINTS|&[A-Za-z]+)|\Z)', content, re.DOTALL)
         if species_match:
@@ -64,7 +64,7 @@ class EspressoAdapter(BaseAdapter):
                 if len(parts) >= 3:
                     pseudos[parts[0]] = (parts[1], parts[2])
         
-        # 5. 各構造ブロックの再構築
+        # 5. Reconstruct structure blocks
         # ATOMIC_SPECIES
         species_str: str = "ATOMIC_SPECIES\n"
         for el in structure.composition.elements:
@@ -82,7 +82,7 @@ class EspressoAdapter(BaseAdapter):
         for site in structure:
             pos_str += f"  {site.specie.symbol}  {site.a:.10f}  {site.b:.10f}  {site.c:.10f}\n"
         
-        # 6. 保存
+        # 6. Save file
         with open(filepath, 'w') as f:
             f.write(cleaned_content)
             f.write(species_str)
