@@ -30,6 +30,8 @@ MANIFEST
 .pytest_cache/
 .mypy_cache/
 .pylint_cache/
+.coverage
+coverage.xml
 
 # Virtual Environments
 .venv/
