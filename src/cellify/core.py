@@ -5,13 +5,15 @@ vacancies, slab generation, and file saving using pymatgen and ASE.
 """
 import math
 import re
-from typing import Tuple, Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 from pymatgen.core import Structure
-from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.core.surface import SlabGenerator
+from pymatgen.io.ase import AseAtomsAdaptor
 
-from cellify.adapters import get_adapter, BaseAdapter
+from cellify.adapters import BaseAdapter, get_adapter
+
 
 def load_structure_file(filepath: str) -> Tuple[Structure, Dict[str, Any]]:
     """

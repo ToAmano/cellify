@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
+
 from pymatgen.core import Structure
+
 
 class BaseAdapter(ABC):
     """

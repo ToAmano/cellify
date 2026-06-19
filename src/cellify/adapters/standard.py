@@ -1,6 +1,9 @@
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
+
 from pymatgen.core import Structure
+
 from cellify.adapters.base import BaseAdapter
+
 
 class StandardAdapter(BaseAdapter):
     """

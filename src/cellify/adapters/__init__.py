@@ -2,6 +2,7 @@ from cellify.adapters.base import BaseAdapter
 from cellify.adapters.espresso import EspressoAdapter
 from cellify.adapters.standard import StandardAdapter
 
+
 def get_adapter(filepath: str) -> BaseAdapter:
     """
     Returns an appropriate I/O adapter object based on the filepath or extension.

@@ -1,17 +1,15 @@
 import os
 import re
-import pytest
+
 import numpy as np
+import pytest
 from pymatgen.core import Structure
-from cellify.core import (
-    load_structure_file,
-    save_structure_file,
-    parse_matrix_string,
-    calculate_min_dist_scaling,
-    apply_substitutions,
-    apply_vacancies,
-    generate_surface_slab
-)
+
+from cellify.core import (apply_substitutions, apply_vacancies,
+                          calculate_min_dist_scaling, generate_surface_slab,
+                          load_structure_file, parse_matrix_string,
+                          save_structure_file)
+
 
 @pytest.fixture
 def poscar_path():

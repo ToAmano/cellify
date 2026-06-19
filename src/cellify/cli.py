@@ -1,19 +1,17 @@
 import argparse
-import sys
 import os
-from typing import List, Optional, Tuple, Dict, Any
+import sys
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 from pymatgen.core import Structure
+
 from cellify import __version__
-from cellify.core import (
-    load_structure_file,
-    save_structure_file,
-    parse_matrix_string,
-    calculate_min_dist_scaling,
-    apply_substitutions,
-    apply_vacancies,
-    generate_surface_slab
-)
+from cellify.core import (apply_substitutions, apply_vacancies,
+                          calculate_min_dist_scaling, generate_surface_slab,
+                          load_structure_file, parse_matrix_string,
+                          save_structure_file)
+
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(

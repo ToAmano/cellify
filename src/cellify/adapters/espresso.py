@@ -1,8 +1,11 @@
-import re
 import os
-from typing import Dict, Any, Tuple
+import re
+from typing import Any, Dict, Tuple
+
 from pymatgen.core import Structure
+
 from cellify.adapters.base import BaseAdapter
+
 
 class EspressoAdapter(BaseAdapter):
     """
