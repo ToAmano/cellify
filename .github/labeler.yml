@@ -1,0 +1,17 @@
+Python:
+  - changed-files:
+      - any-glob-to-any-file: src/cellify/**/*
+Docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - "docs/**/*"
+Examples:
+  - changed-files:
+      - any-glob-to-any-file: examples/**/*
+Test:
+  - changed-files:
+      - any-glob-to-any-file: tests/**/*
+CICD:
+  - changed-files:
+      - any-glob-to-any-file: .github/**/*
