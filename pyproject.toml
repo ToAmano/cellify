@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cellify"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A friendly DFT helper CLI for generating supercells and calculation-ready inputs."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -40,3 +40,6 @@ cellify = "cellify.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cellify"]
+
+[tool.hatch.version]
+path = "src/cellify/__init__.py"
