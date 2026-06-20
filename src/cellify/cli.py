@@ -103,6 +103,12 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--vacuum", type=float, help="Vacuum layer thickness (in Angstroms)"
     )
+    parser.add_argument(
+        "-w",
+        "--view",
+        action="store_true",
+        help="Quickly visualize the generated structure in 3D using ASE (requires GUI environment).",
+    )
 
     return parser.parse_args(args)
 
@@ -239,6 +245,20 @@ def main() -> None:
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error saving file: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # 3. Optional visualization
+    if args.view:
+        print("\nOpening structure viewer...")
+        try:
+            # pylint: disable=import-outside-toplevel
+            from ase.visualize import view
+            from pymatgen.io.ase import AseAtomsAdaptor
+
+            atoms = AseAtomsAdaptor.get_atoms(structure)
+            view(atoms)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Error launching structure viewer: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

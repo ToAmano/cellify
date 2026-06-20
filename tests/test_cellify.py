@@ -387,3 +387,27 @@ def test_cli_default_output_with_ext(poscar_path, tmp_path):
 
     expected_out = tmp_path / "POSCAR_supercell.vasp"
     assert expected_out.exists()
+
+
+# CLI --view tests
+def test_cli_main_view(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
+    with patch("sys.argv", test_args):
+        with patch("ase.visualize.view") as mock_view:
+            from cellify.cli import main
+            main()
+            mock_view.assert_called_once()
+    assert out_file.exists()
+
+
+def test_cli_main_view_error(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
+    with patch("sys.argv", test_args):
+        with patch("ase.visualize.view", side_effect=RuntimeError("Display not available")) as mock_view:
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+            mock_view.assert_called_once()
