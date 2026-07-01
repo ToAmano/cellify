@@ -387,3 +387,46 @@ def test_cli_default_output_with_ext(poscar_path, tmp_path):
 
     expected_out = tmp_path / "POSCAR_supercell.vasp"
     assert expected_out.exists()
+
+
+# CLI --view tests
+def test_cli_main_view_with_tkinter(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
+    from unittest.mock import MagicMock
+    with patch("sys.argv", test_args):
+        with patch.dict("sys.modules", {"_tkinter": MagicMock()}):
+            with patch("ase.visualize.view") as mock_view:
+                from cellify.cli import main
+                main()
+                mock_view.assert_called_once()
+    assert out_file.exists()
+
+
+def test_cli_main_view_without_tkinter(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
+    import ase.visualize.plot
+    with patch("sys.argv", test_args):
+        with patch.dict("sys.modules", {"_tkinter": None}):
+            with patch("matplotlib.pyplot.show") as mock_show, \
+                 patch("ase.visualize.plot.plot_atoms") as mock_plot_atoms:
+                from cellify.cli import main
+                main()
+                mock_show.assert_called_once()
+                mock_plot_atoms.assert_called_once()
+    assert out_file.exists()
+
+
+def test_cli_main_view_error(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
+    from unittest.mock import MagicMock
+    with patch("sys.argv", test_args):
+        with patch.dict("sys.modules", {"_tkinter": MagicMock()}):
+            with patch("ase.visualize.view", side_effect=RuntimeError("Display not available")) as mock_view:
+                from cellify.cli import main
+                with pytest.raises(SystemExit) as excinfo:
+                    main()
+                assert excinfo.value.code == 1
+                mock_view.assert_called_once()

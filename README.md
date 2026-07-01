@@ -63,6 +63,16 @@ cellify -i <input_file> -o <output_file> [options]
 - `--slab` : Miller indices $h\ k\ l$ for surface slab model creation (e.g., `--slab 1 1 1`).
 - `--thick` : Slab thickness in $\text{Å}$ or layers (e.g., `--thick 15.0`).
 - `--vacuum` : Vacuum layer thickness in $\text{Å}$ (e.g., `--vacuum 15.0`).
+- `-w`, `--view` : Quickly visualize the final generated structure in 3D using ASE (requires GUI environment). If `_tkinter` is missing, it automatically falls back to a 2D matplotlib projection plot.
+
+> [!NOTE]
+> **3D Visualization (Tkinter / `_tkinter` error)**
+> If you run with `-w`/`--view` and see `ModuleNotFoundError: No module named '_tkinter'`, your Python environment is missing Tcl/Tk support:
+> - **macOS (Homebrew Python)**: Run `brew install python-tk` (or `python-tk@3.9` matching your python version).
+> - **macOS (Conda Python)**: Run `conda install -c conda-forge tk python` inside your active environment.
+> - **Linux (Ubuntu/Debian)**: Run `sudo apt-get install python3-tk`.
+>
+> If Tkinter is not available, `cellify` automatically falls back to rendering a 2D projection window using `matplotlib`.
 
 ---
 
