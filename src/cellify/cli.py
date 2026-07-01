@@ -136,6 +136,11 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Quickly visualize the generated structure in 3D using ASE (requires GUI environment).",
     )
+    parser.add_argument(
+        "--show-indices",
+        action="store_true",
+        help="Print absolute atomic indices and coordinate mapping of the final structure.",
+    )
 
     return parser.parse_args(args)
 
@@ -157,6 +162,35 @@ def _print_structure_summary(structure: Structure, label: str = "") -> None:
         print(
             f"    alpha = {structure.lattice.alpha:.2f} deg, beta = {structure.lattice.beta:.2f} deg, gamma = {structure.lattice.gamma:.2f} deg"
         )
+
+
+def _print_atomic_indices(structure: Structure) -> None:
+    """
+    Prints a formatted table of all atomic indices and coordinates.
+    """
+    print("\nAbsolute Atomic Indices & Coordinates:")
+    print("-" * 78)
+    header = (
+        f"{'Index':<6} {'Element':<8} "
+        f"{'Fractional Coordinates (a, b, c)':<36} "
+        f"{'Cartesian (x, y, z)':<22}"
+    )
+    print(header)
+    print("-" * 78)
+    for idx, site in enumerate(structure):
+        frac = (
+            f"[{site.frac_coords[0]:.4f}, "
+            f"{site.frac_coords[1]:.4f}, "
+            f"{site.frac_coords[2]:.4f}]"
+        )
+        cart = (
+            f"[{site.coords[0]:.3f}, "
+            f"{site.coords[1]:.3f}, "
+            f"{site.coords[2]:.3f}]"
+        )
+        print(f"{idx:<6} {site.species_string:<8} {frac:<36} {cart:<22}")
+    print("-" * 78)
+    print(f"Total: {len(structure)} atoms ({structure.composition.formula})")
 
 
 def _apply_supercell(structure: Structure, args: argparse.Namespace) -> None:
@@ -312,6 +346,9 @@ def main() -> None:
 
     # Print final structure summary
     _print_structure_summary(structure, label="Final structure summary:")
+
+    if args.show_indices:
+        _print_atomic_indices(structure)
 
     print(f"\nSaving final structure to: {output_path}")
     try:
