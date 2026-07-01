@@ -6,7 +6,7 @@ Handles arg parsing, workflow orchestration, and user output reporting.
 import argparse
 import os
 import sys
-from typing import List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 from pymatgen.core import Structure
@@ -41,12 +41,24 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         "-i",
         "--input",
         required=True,
-        help="Input structure file path (e.g. POSCAR, input.cif, qe.in)",
+        help="Input structure file path (e.g. POSCAR, input.cif, qe.in, qe.out)",
     )
     parser.add_argument(
         "-o",
         "--output",
         help="Output structure file path (default: <input_base>_supercell.<ext>)",
+    )
+    parser.add_argument(
+        "--template",
+        type=str,
+        help="Template QE input file to preserve computational parameters and comments when generating output.",
+    )
+    parser.add_argument(
+        "--calc",
+        "--calculation",
+        dest="calc",
+        type=str,
+        help="Override the calculation parameter in the QE input file (e.g. scf, nscf, bands).",
     )
 
     # Supercell options
@@ -224,6 +236,47 @@ def _determine_output_path(args: argparse.Namespace) -> str:
     return f"{base}_supercell{ext}"
 
 
+def _process_template_and_validation(
+    args: argparse.Namespace, meta_data: Dict[str, Any], output_path: str
+) -> Dict[str, Any]:
+    """
+    Handles template loading, calculation overrides, and QE I/O format validations.
+    """
+    if args.template:
+        if not os.path.exists(args.template):
+            print(f"Error: Template file '{args.template}' not found.", file=sys.stderr)
+            sys.exit(1)
+        print(f"Loading calculation parameters template from: {args.template}")
+        try:
+            _, template_meta = load_structure_file(args.template)
+            # Retain the original file content/formatting from the template
+            meta_data = template_meta
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Error loading template file: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.calc:
+        meta_data["calculation"] = args.calc
+
+    # Validate output format if reading from QE output log
+    is_input_qe_output = meta_data.get("mode") == "espresso_out"
+    lower_out_path = output_path.lower()
+    is_output_qe_input = (
+        any(lower_out_path.endswith(ext) for ext in [".in", ".qe", ".pwi"])
+        or "qe" in lower_out_path
+        or "espresso" in lower_out_path
+    )
+
+    if is_input_qe_output and is_output_qe_input and not args.template:
+        print(
+            "Error: A template QE input file must be specified via --template when reading from a QE output log file.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    return meta_data
+
+
 def main() -> None:
     """
     Main entry point for the cellify CLI utility.
@@ -243,6 +296,9 @@ def main() -> None:
 
     _print_structure_summary(structure)
 
+    output_path: str = _determine_output_path(args)
+    meta_data = _process_template_and_validation(args, meta_data, output_path)
+
     # 0. Conventional cell conversion
     if args.conventional:
         print("Converting structure to standard conventional cell...")
@@ -256,9 +312,6 @@ def main() -> None:
 
     # Print final structure summary
     _print_structure_summary(structure, label="Final structure summary:")
-
-    # Determine output filename
-    output_path: str = _determine_output_path(args)
 
     print(f"\nSaving final structure to: {output_path}")
     try:
