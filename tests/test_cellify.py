@@ -8,7 +8,8 @@ from pymatgen.core import Structure
 
 from cellify.core import (
     apply_substitutions,
-    apply_vacancies,
+    apply_vacancies_by_count,
+    apply_vacancies_by_index,
     calculate_min_dist_scaling,
     convert_to_conventional,
     generate_surface_slab,
@@ -104,7 +105,7 @@ def test_apply_vacancies(poscar_path):
     structure, _ = load_structure_file(poscar_path)
 
     # Create a vacancy by removing the 0th atom
-    apply_vacancies(structure, ["Si:0"])
+    apply_vacancies_by_index(structure, ["Si:0"])
     assert len(structure) == 1
 
 
@@ -166,35 +167,46 @@ def test_apply_substitutions_percentage(poscar_path):
 def test_apply_vacancies_errors(poscar_path):
     structure, _ = load_structure_file(poscar_path)
 
-    # Rule split error
-    with pytest.raises(ValueError, match="Invalid vacancy rule"):
-        apply_vacancies(structure, ["Si"])
+    # 1. Index-based vacancy errors
+    with pytest.raises(ValueError, match="Invalid vacancy index rule"):
+        apply_vacancies_by_index(structure, ["Si"])
 
-    # Matching elements not found (warning)
-    apply_vacancies(structure, ["H:0"])
+    with pytest.raises(ValueError, match="Invalid vacancy index"):
+        apply_vacancies_by_index(structure, ["Si:abc"])
 
-    # Index out of range
     with pytest.raises(IndexError, match="out of range"):
-        apply_vacancies(structure, ["Si:999"])
-
-    # Invalid vacancy target
-    with pytest.raises(ValueError, match="Invalid vacancy target"):
-        apply_vacancies(structure, ["Si:abc"])
+        apply_vacancies_by_index(structure, ["Si:999"])
 
     # Warning path: actual element does not match vacancy element
     structure2, _ = load_structure_file(poscar_path)
     apply_substitutions(structure2, ["Si:P:0"])
-    apply_vacancies(structure2, ["Si:0"])
+    apply_vacancies_by_index(structure2, ["Si:0"])
+
+    # 2. Count-based vacancy errors
+    with pytest.raises(ValueError, match="Invalid vacancy count rule"):
+        apply_vacancies_by_count(structure, ["Si"])
+
+    with pytest.raises(ValueError, match="Invalid vacancy count"):
+        apply_vacancies_by_count(structure, ["Si:abc"])
+
+    with pytest.raises(ValueError, match="cannot be negative"):
+        apply_vacancies_by_count(structure, ["Si:-1"])
+
+    with pytest.raises(ValueError, match="exceeds available"):
+        apply_vacancies_by_count(structure, ["Si:999"])
+
+    # Warning path: matching elements not found
+    apply_vacancies_by_count(structure, ["H:2"])
 
 
 def test_apply_vacancies_random(poscar_path):
     structure, _ = load_structure_file(poscar_path)
-    # Scale to 64 atoms (> 20 atoms) to trigger the random vacancy branch
+    # Scale to 64 atoms to trigger the random vacancy branch
     structure.make_supercell([2, 4, 4])
     assert len(structure) == 64
 
     # Apply count-based vacancies (e.g. remove 4 Si atoms)
-    apply_vacancies(structure, ["Si:4"])
+    apply_vacancies_by_count(structure, ["Si:4"])
     assert len(structure) == 60
 
 
@@ -244,7 +256,7 @@ def test_cli_main_substitute_and_vacancy(poscar_path, tmp_path):
     out_file = tmp_path / "POSCAR_out"
     test_args = [
         "cellify", "-i", poscar_path, "-o", str(out_file),
-        "--substitute", "Si:P:0", "--vacancy", "Si:1"
+        "--substitute", "Si:P:0", "--vacancy-index", "Si:1"
     ]
     with patch("sys.argv", test_args):
         from cellify.cli import main
@@ -253,6 +265,34 @@ def test_cli_main_substitute_and_vacancy(poscar_path, tmp_path):
     structure, _ = load_structure_file(str(out_file))
     assert len(structure) == 1
     assert structure[0].specie.symbol == "P"
+
+
+def test_cli_main_vacancy_deprecated_alias(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = [
+        "cellify", "-i", poscar_path, "-o", str(out_file),
+        "--vacancy", "Si:0"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 1
+
+
+def test_cli_main_vacancy_count(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = [
+        "cellify", "-i", poscar_path, "-o", str(out_file),
+        "--vacancy-count", "Si:1"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert len(structure) == 1
 
 
 def test_cli_main_slab(poscar_path, tmp_path):
@@ -342,8 +382,17 @@ def test_cli_substitute_error(poscar_path):
         assert excinfo.value.code == 1
 
 
-def test_cli_vacancy_error(poscar_path):
-    test_args = ["cellify", "-i", poscar_path, "--vacancy", "Si"]
+def test_cli_vacancy_index_error(poscar_path):
+    test_args = ["cellify", "-i", poscar_path, "--vacancy-index", "Si"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_vacancy_count_error(poscar_path):
+    test_args = ["cellify", "-i", poscar_path, "--vacancy-count", "Si"]
     with patch("sys.argv", test_args):
         from cellify.cli import main
         with pytest.raises(SystemExit) as excinfo:

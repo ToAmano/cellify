@@ -14,7 +14,8 @@ from pymatgen.core import Structure
 from cellify import __version__
 from cellify.core import (
     apply_substitutions,
-    apply_vacancies,
+    apply_vacancies_by_count,
+    apply_vacancies_by_index,
     calculate_min_dist_scaling,
     convert_to_conventional,
     generate_surface_slab,
@@ -83,10 +84,24 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         help="Substitution rule: 'element:target_element:index_or_percentage' (e.g., 'Si:P:0' or 'Si:Al:5%%')",
     )
     parser.add_argument(
-        "--vacancy",
+        "--vacancy-index",
         action="append",
         default=[],
-        help="Vacancy rule: 'element:index_or_count' (e.g., 'Si:0' or 'O:2')",
+        help="Vacancy index rule: 'element:index' (e.g., 'Si:0' or 'C:33')",
+    )
+    # Keep --vacancy as an alias for backward compatibility
+    parser.add_argument(
+        "--vacancy",
+        dest="vacancy_index",
+        action="append",
+        default=[],
+        help="Deprecated alias for --vacancy-index",
+    )
+    parser.add_argument(
+        "--vacancy-count",
+        action="append",
+        default=[],
+        help="Vacancy count rule: 'element:count' (e.g., 'O:2')",
     )
 
     # Slab options
@@ -168,11 +183,18 @@ def _apply_defects_and_slab(
             print(f"Error applying substitutions: {e}", file=sys.stderr)
             sys.exit(1)
 
-    if args.vacancy:
+    if args.vacancy_index:
         try:
-            apply_vacancies(structure, args.vacancy)
+            apply_vacancies_by_index(structure, args.vacancy_index)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error applying vacancies: {e}", file=sys.stderr)
+            print(f"Error applying vacancy index: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.vacancy_count:
+        try:
+            apply_vacancies_by_count(structure, args.vacancy_count)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Error applying vacancy count: {e}", file=sys.stderr)
             sys.exit(1)
 
     if args.slab:
