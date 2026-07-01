@@ -871,3 +871,19 @@ def test_get_adapter_exception(tmp_path):
     # A directory path will raise IsADirectoryError when read, triggering the content check exception block
     adapter = get_adapter(str(tmp_path))
     assert isinstance(adapter, StandardAdapter)
+
+
+def test_cli_show_indices(poscar_path, tmp_path, capsys):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--show-indices"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+
+    captured = capsys.readouterr()
+    assert "Absolute Atomic Indices & Coordinates:" in captured.out
+    assert "Index" in captured.out
+    assert "Fractional Coordinates (a, b, c)" in captured.out
+    assert "Cartesian (x, y, z)" in captured.out
+    assert "0      Si" in captured.out
+    assert "Total: 2 atoms" in captured.out
