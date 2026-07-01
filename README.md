@@ -64,7 +64,7 @@ cellify -i <input_file> -o <output_file> [options]
 - `--slab` : Miller indices $h\ k\ l$ for surface slab model creation (e.g., `--slab 1 1 1`).
 - `--thick` : Slab thickness in $\text{Å}$ or layers (e.g., `--thick 15.0`).
 - `--vacuum` : Vacuum layer thickness in $\text{Å}$ (e.g., `--vacuum 15.0`).
-- `--template` : Template QE input file to preserve computational parameters and comments when generating output from a QE output log file.
+- `--template` : Template QE input file to preserve computational parameters and comments when generating a new input file from a QE output log file.
 - `--calc`, `--calculation` : Override the `calculation` parameter inside the QE input file namelist (e.g., `scf`, `nscf`, `bands`).
 - `-w`, `--view` : Quickly visualize the final generated structure in 3D using ASE (requires GUI environment). If `_tkinter` is missing, it automatically falls back to a 2D matplotlib projection plot.
 
