@@ -86,10 +86,22 @@ cellify -i <input_file> -o <output_file> [options]
 cellify -i POSCAR -o POSCAR_223 --dim 2 2 3
 ```
 
+<p align="center">
+  <img src="docs/images/ex1_input.png" width="280" alt="Primitive Unit Cell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex1_output.png" width="280" alt="2x2x3 Supercell" />
+</p>
+
 ### 2. Convert primitive cell to conventional and scale to 2x2x2
 ```bash
 cellify -i Si_primitive.POSCAR -o Si_conventional_222.POSCAR --conventional --dim 2 2 2
 ```
+
+<p align="center">
+  <img src="docs/images/ex2_input.png" width="280" alt="Primitive Unit Cell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex2_output.png" width="280" alt="Conventional 2x2x2 Supercell" />
+</p>
 
 ### 3. Orthogonalize a hexagonal cell (Quantum ESPRESSO input)
 ```bash
@@ -97,15 +109,33 @@ cellify -i Si_primitive.POSCAR -o Si_conventional_222.POSCAR --conventional --di
 cellify -i qe.in -o qe_ortho.in --matrix "1 -1 0 / 1 1 0 / 0 0 1"
 ```
 
+<p align="center">
+  <img src="docs/images/ex3_input.png" width="280" alt="Primitive QE Cell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex3_output.png" width="280" alt="Orthogonalized QE Cell" />
+</p>
+
 ### 4. Generate the smallest supercell keeping defect distance $\ge 15\ \text{Å}$
 ```bash
 cellify -i POSCAR -o POSCAR_defect_bulk --min-dist 15.0
 ```
 
+<p align="center">
+  <img src="docs/images/ex4_input.png" width="280" alt="Primitive Unit Cell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex4_output.png" width="280" alt="4x4x4 scaled Supercell" />
+</p>
+
 ### 5. Create a silicon supercell and replace 1 atom with Phosphorus (n-type doped model)
 ```bash
 cellify -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
 ```
+
+<p align="center">
+  <img src="docs/images/ex5_input.png" width="280" alt="Conventional Unit Cell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex5_output.png" width="280" alt="3x3x3 Doped Supercell" />
+</p>
 
 ### 6. Introduce vacancies in a supercell (e.g., delete a specific Silicon atom, or randomly remove 2 Oxygen atoms)
 ```bash
@@ -116,10 +146,22 @@ cellify -i Si_supercell.POSCAR -o Si_vacancy.POSCAR --vacancy-index "Si:0"
 cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy-count "O:2"
 ```
 
+<p align="center">
+  <img src="docs/images/ex6_input.png" width="280" alt="Si 2x2x2 Supercell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex6_output.png" width="280" alt="Si Supercell with Vacancy" />
+</p>
+
 ### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
 ```bash
 cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
 ```
+
+<p align="center">
+  <img src="docs/images/ex7_input.png" width="220" alt="Bulk STO Unit Cell" />
+  <span style="font-size: 2rem; margin: 0 25px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex7_output.png" width="220" alt="STO (100) Surface Slab" />
+</p>
 
 ### 8. Extract relaxed structure from a Quantum ESPRESSO output log and generate an SCF input
 ```bash
@@ -127,6 +169,26 @@ cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuu
 # merges it with the computational settings in template.in,
 # and writes scf.in with calculation = 'scf' and updated atom/type counts.
 cellify -i vc-relax.out --template template.in -o scf.in --calc scf
+```
+```mermaid
+graph TD
+    subgraph Inputs ["Input Files"]
+        A["vc-relax.out (QE Output Log)<br/>➔ Contains relaxed atomic coordinates"]
+        B["template.in (Input Template)<br/>➔ Contains K-points, parameters, etc."]
+    end
+
+    C["cellify -i vc-relax.out --template template.in -o scf.in --calc scf"]
+
+    subgraph Output ["Output File"]
+        D["scf.in (Merged SCF Input)<br/>✓ Merged parameters & coordinates<br/>✓ Updated 'nat', 'ntyp' & calculation='scf'"]
+    end
+
+    A --> C
+    B --> C
+    C --> D
+
+    style C fill:#238636,color:#fff,stroke:#2ea44f,stroke-width:2px;
+    style D fill:#1f6feb,color:#fff,stroke:#58a6ff,stroke-width:2px;
 ```
 
 For more hands-on examples, check out the `examples/` directory.
