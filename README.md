@@ -158,9 +158,9 @@ cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuu
 ```
 
 <p align="center">
-  <img src="docs/images/ex7_input.png" width="260" alt="Bulk STO Unit Cell" />
+  <img src="docs/images/ex7_input.png" width="220" alt="Bulk STO Unit Cell" />
   <span style="font-size: 2rem; margin: 0 25px; vertical-align: middle;">➔</span>
-  <img src="docs/images/ex7_output.png" width="160" alt="STO (100) Surface Slab" />
+  <img src="docs/images/ex7_slab_large.png" width="220" alt="STO (100) Surface Slab" />
 </p>
 
 ### 8. Extract relaxed structure from a Quantum ESPRESSO output log and generate an SCF input

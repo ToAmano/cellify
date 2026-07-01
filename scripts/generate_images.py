@@ -190,8 +190,8 @@ def main():
     save_render(AseAtomsAdaptor.get_atoms(ex7_in), os.path.join(output_dir, "ex7_input.png"), rotation="15x,45y,0z")
     save_render(
         AseAtomsAdaptor.get_atoms(ex7_out),
-        os.path.join(output_dir, "ex7_output.png"),
-        figsize=(5, 9),
+        os.path.join(output_dir, "ex7_slab_large.png"),
+        figsize=(3, 9),
         rotation="10x,45y,0z",
     )
 
