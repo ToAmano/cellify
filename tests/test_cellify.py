@@ -504,7 +504,18 @@ def test_open_browser_viewer(poscar_path):
         open_browser_viewer(structure)
         mock_open.assert_called_once()
         args, _ = mock_open.call_args
-        assert args[0].startswith("file://")
+        file_url = args[0]
+        assert file_url.startswith("file://")
+        file_path = file_url[7:]
+        assert os.path.exists(file_path)
+        with open(file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        assert "clickLabel = viewer.addLabel" in html_content
+        assert "Index:" in html_content
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
 
 
 def test_cli_extract_relaxation(tmp_path):
