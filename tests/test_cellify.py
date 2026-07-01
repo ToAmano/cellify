@@ -644,3 +644,53 @@ positions (alat units)
     struct, meta = adapter.read(str(fake_qe_in))
     assert len(struct) == 2
     assert meta["mode"] == "espresso_out"
+
+
+def test_cli_extract_relaxation_real_file(tmp_path):
+    # Test with the real divacancy_relax_gamma.out file
+    import shutil
+    from pathlib import Path
+    real_out_src = Path(__file__).parent / "divacancy_relax_gamma.out"
+    real_out = tmp_path / "divacancy_relax_gamma.out"
+    shutil.copy(real_out_src, real_out)
+
+    # Create a template
+    template_in = tmp_path / "template.in"
+    template_content = """&CONTROL
+  calculation = 'vc-relax'
+/
+&SYSTEM
+  ibrav = 0
+  nat = 2
+  ntyp = 2
+/
+&ELECTRONS
+/
+ATOMIC_SPECIES
+  Si  28.085  Si.UPF
+  C   12.011  C.UPF
+CELL_PARAMETERS angstrom
+  8.0 0.0 0.0
+  0.0 8.0 0.0
+  0.0 0.0 8.0
+ATOMIC_POSITIONS crystal
+  Si 0.0 0.0 0.0
+  C 0.25 0.25 0.25
+"""
+    template_in.write_text(template_content)
+
+    out_file = tmp_path / "scf.in"
+    test_args = [
+        "cellify", "-i", str(real_out),
+        "--template", str(template_in),
+        "-o", str(out_file),
+        "--calc", "scf"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+
+    assert out_file.exists()
+    out_content = out_file.read_text()
+    assert "calculation = 'scf'" in out_content or 'calculation = "scf"' in out_content
+    assert "nat = 62" in out_content

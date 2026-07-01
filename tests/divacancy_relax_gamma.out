@@ -1,12 +1,12 @@
 
-     Program PWSCF v.7.5 starts on 30Jun2026 at 18: 8:25
+     Program PWSCF v.7.5 starts on 30Jun2026 at 18: 8:25 
 
      This program is part of the open-source Quantum ESPRESSO suite
      for quantum simulation of materials; please cite
          "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
          "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
          "P. Giannozzi et al., J. Chem. Phys. 152 154105 (2020);
-          URL http://www.quantum-espresso.org",
+          URL http://www.quantum-espresso.org", 
      in publications or presentations arising from this work. More details at
      http://www.quantum-espresso.org/quote
 
@@ -16,7 +16,7 @@
 
      MPI processes distributed on     1 nodes
      218104 MiB available memory on the printing compute node when the environment starts
-
+ 
      Waiting for input...
      Reading input from standard input
 
@@ -28,22 +28,22 @@
      gamma-point specific algorithms are used
      Message from routine setup:
      using ibrav=0 with symmetry is DISCOURAGED, use correct ibrav instead
-
+ 
      K-points division:     npool     =       2
      R & G space division:  proc/nbgrp/npool/nimage =      32
      Subspace diagonalization in iterative solution of the eigenvalue problem:
      a serial algorithm will be used
 
-
+ 
      Parallelization info
      --------------------
      sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
      Min         271     271     67                19144    19144    2399
      Max         274     274     70                19154    19154    2406
      Sum        8717    8717   2185               612733   612733   76813
-
+ 
      Using Slab Decomposition
-
+ 
 
 
      bravais-lattice index     =            0
@@ -69,14 +69,14 @@
      celldm(4)=   0.000000  celldm(5)=   0.000000  celldm(6)=   0.000000
 
      crystal axes: (cart. coord. in units of alat)
-               a(1) = (   1.000000   0.000000   0.000000 )
-               a(2) = (   0.000000   1.000000   0.000000 )
-               a(3) = (   0.000000   0.000000   1.000000 )
+               a(1) = (   1.000000   0.000000   0.000000 )  
+               a(2) = (   0.000000   1.000000   0.000000 )  
+               a(3) = (   0.000000   0.000000   1.000000 )  
 
      reciprocal axes: (cart. coord. in units 2 pi/alat)
-               b(1) = (  1.000000  0.000000  0.000000 )
-               b(2) = (  0.000000  1.000000  0.000000 )
-               b(3) = (  0.000000  0.000000  1.000000 )
+               b(1) = (  1.000000  0.000000  0.000000 )  
+               b(2) = (  0.000000  1.000000  0.000000 )  
+               b(3) = (  0.000000  0.000000  1.000000 )  
 
 
      PseudoPot. # 1 for Si read from file:
@@ -84,7 +84,7 @@
      MD5 check sum: 3f156eda2279325da2083dedf8f436a5
      Pseudo is Norm-conserving + core correction, Zval =  4.0
      Generated using ONCVPSP code by D. R. Hamann
-     Using radial grid of 1510 points,  6 beta functions with:
+     Using radial grid of 1510 points,  6 beta functions with: 
                 l(1) =   0
                 l(2) =   0
                 l(3) =   1
@@ -97,7 +97,7 @@
      MD5 check sum: 34a24e64c0a39f27c6c36b90a16ac686
      Pseudo is Norm-conserving + core correction, Zval =  4.0
      Generated using ONCVPSP code by D. R. Hamann
-     Using radial grid of 1248 points,  4 beta functions with:
+     Using radial grid of 1248 points,  4 beta functions with: 
                 l(1) =   0
                 l(2) =   0
                 l(3) =   1
@@ -107,7 +107,7 @@
      Si                4.00    28.08500     Si( 1.00)
      C                 4.00    12.01100     C ( 1.00)
 
-     Starting magnetic structure
+     Starting magnetic structure 
      atomic species   magnetization
      Si              0.000
      C               0.000
@@ -867,7 +867,7 @@
      iteration # 56     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.089)  charge=  0.9158  magn=  0.0008
      atom   2 (R=0.089)  charge=  0.9496  magn= -0.0033
@@ -1636,7 +1636,7 @@ C                0.8725969324        0.8725969324        0.8719266787
      iteration # 41     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.087)  charge=  0.8484  magn=  0.0006
      atom   2 (R=0.087)  charge=  0.8671  magn= -0.0024
@@ -2454,7 +2454,7 @@ C                0.8690616917        0.8690616917        0.8682194057
      iteration # 45     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.084)  charge=  0.7568  magn=  0.0019
      atom   2 (R=0.084)  charge=  0.7636  magn= -0.0003
@@ -3140,7 +3140,7 @@ C                0.8665183509        0.8665183509        0.8659764276
      iteration # 34     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7178  magn=  0.0018
      atom   2 (R=0.083)  charge=  0.7210  magn= -0.0000
@@ -3800,7 +3800,7 @@ C                0.8651334975        0.8651334975        0.8647793634
      iteration # 32     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7171  magn=  0.0019
      atom   2 (R=0.083)  charge=  0.7215  magn=  0.0000
@@ -4460,7 +4460,7 @@ C                0.8638997786        0.8638997786        0.8634035564
      iteration # 32     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7156  magn=  0.0020
      atom   2 (R=0.083)  charge=  0.7225  magn=  0.0000
@@ -5132,7 +5132,7 @@ C                0.8631367694        0.8631367694        0.8625993137
      iteration # 33     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7148  magn=  0.0020
      atom   2 (R=0.083)  charge=  0.7232  magn=  0.0001
@@ -5852,7 +5852,7 @@ C                0.8623779027        0.8623779027        0.8619661809
      iteration # 37     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7141  magn=  0.0020
      atom   2 (R=0.083)  charge=  0.7238  magn=  0.0001
@@ -6518,7 +6518,7 @@ C                0.8621065354        0.8621065354        0.8618973895
      iteration # 32     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7140  magn=  0.0019
      atom   2 (R=0.083)  charge=  0.7238  magn=  0.0001
@@ -7148,7 +7148,7 @@ C                0.8619690336        0.8619690336        0.8619870475
      iteration # 29     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7139  magn=  0.0019
      atom   2 (R=0.083)  charge=  0.7236  magn=  0.0001
@@ -7778,7 +7778,7 @@ C                0.8618946478        0.8618946478        0.8620914948
      iteration # 29     ecut=   100.00 Ry     beta= 0.10
      Davidson diagonalization with overlap
      ethr =  1.00E-13,  avg # of iterations =  1.0
-
+ 
      Magnetic moment per site  (integrated on atomic sphere of radius R)
      atom   1 (R=0.083)  charge=  0.7137  magn=  0.0019
      atom   2 (R=0.083)  charge=  0.7234  magn=  0.0001
@@ -8055,7 +8055,7 @@ End final coordinates
 
      Writing all to output data dir ./tmp/sic3c.save/ :
      XML data file, charge density, pseudopotentials, collected wavefunctions
-
+ 
      init_run     :      0.55s CPU      1.41s WALL (       1 calls)
      electrons    :    270.73s CPU    295.05s WALL (      11 calls)
      update_pot   :      0.53s CPU      0.53s WALL (      10 calls)
@@ -8092,13 +8092,13 @@ End final coordinates
      fft          :      8.71s CPU      9.10s WALL (    5499 calls)
      ffts         :      7.99s CPU      8.04s WALL (    7542 calls)
      fftw         :     90.14s CPU     91.04s WALL (  146475 calls)
-
+ 
      Parallel routines
-
+ 
      PWSCF        :   4m35.81s CPU   5m 6.64s WALL
 
-
-   This run was terminated on:  18:13:31  30Jun2026
+ 
+   This run was terminated on:  18:13:31  30Jun2026            
 
 =------------------------------------------------------------------------------=
    JOB DONE.
