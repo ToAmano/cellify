@@ -332,24 +332,36 @@ def main() -> None:
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Error launching WebGL viewer: {e}", file=sys.stderr)
             try:
-                print("Falling back to matplotlib 2D projection viewer.")
-                import matplotlib.pyplot as plt
-                from ase.visualize.plot import plot_atoms
+                print("Attempting to fall back to ASE native GUI viewer...")
+                import _tkinter  # noqa: F401 # pylint: disable=unused-import
+                from ase.visualize import view
                 from pymatgen.io.ase import AseAtomsAdaptor
 
                 atoms = AseAtomsAdaptor.get_atoms(structure)
-                _, ax = plt.subplots(figsize=(6, 6))
-                plot_atoms(atoms, ax, rotation="10x,10y,0z")
-                ax.set_axis_off()
-                plt.tight_layout()
-                print("Close the matplotlib window to continue.")
-                plt.show()
-            except Exception as fallback_err:  # pylint: disable=broad-exception-caught
-                print(
-                    f"Error launching matplotlib viewer fallback: {fallback_err}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+                view(atoms)
+            except Exception as ase_err:  # pylint: disable=broad-exception-caught
+                print(f"ASE GUI viewer not available: {ase_err}", file=sys.stderr)
+                try:
+                    print("Falling back to matplotlib 2D projection viewer.")
+                    import matplotlib.pyplot as plt
+                    from ase.visualize.plot import plot_atoms
+                    from pymatgen.io.ase import AseAtomsAdaptor
+
+                    atoms = AseAtomsAdaptor.get_atoms(structure)
+                    _, ax = plt.subplots(figsize=(6, 6))
+                    plot_atoms(atoms, ax, rotation="10x,10y,0z")
+                    ax.set_axis_off()
+                    plt.tight_layout()
+                    print("Close the matplotlib window to continue.")
+                    plt.show()
+                except (
+                    Exception
+                ) as fallback_err:  # pylint: disable=broad-exception-caught
+                    print(
+                        f"Error launching matplotlib viewer fallback: {fallback_err}",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
 
 
 if __name__ == "__main__":

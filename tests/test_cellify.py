@@ -452,18 +452,33 @@ def test_cli_main_view_browser(poscar_path, tmp_path):
     assert out_file.exists()
 
 
-def test_cli_main_view_browser_fallback(poscar_path, tmp_path):
+def test_cli_main_view_browser_fallback_to_ase(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
+    from unittest.mock import MagicMock
+    with patch("sys.argv", test_args):
+        with patch("webbrowser.open", side_effect=RuntimeError("No browser available")):
+            with patch.dict("sys.modules", {"_tkinter": MagicMock()}):
+                with patch("ase.visualize.view") as mock_view:
+                    from cellify.cli import main
+                    main()
+                    mock_view.assert_called_once()
+    assert out_file.exists()
+
+
+def test_cli_main_view_browser_fallback_to_matplotlib(poscar_path, tmp_path):
     out_file = tmp_path / "POSCAR_out"
     test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
     import ase.visualize.plot
     with patch("sys.argv", test_args):
         with patch("webbrowser.open", side_effect=RuntimeError("No browser available")):
-            with patch("matplotlib.pyplot.show") as mock_show, \
-                 patch("ase.visualize.plot.plot_atoms") as mock_plot_atoms:
-                from cellify.cli import main
-                main()
-                mock_show.assert_called_once()
-                mock_plot_atoms.assert_called_once()
+            with patch("ase.visualize.view", side_effect=RuntimeError("No display available")):
+                with patch("matplotlib.pyplot.show") as mock_show, \
+                     patch("ase.visualize.plot.plot_atoms") as mock_plot_atoms:
+                    from cellify.cli import main
+                    main()
+                    mock_show.assert_called_once()
+                    mock_plot_atoms.assert_called_once()
     assert out_file.exists()
 
 
@@ -472,12 +487,13 @@ def test_cli_main_view_browser_fallback_error(poscar_path, tmp_path):
     test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--view"]
     with patch("sys.argv", test_args):
         with patch("webbrowser.open", side_effect=RuntimeError("No browser available")):
-            with patch("matplotlib.pyplot.show", side_effect=RuntimeError("No display")) as mock_show:
-                from cellify.cli import main
-                with pytest.raises(SystemExit) as excinfo:
-                    main()
-                assert excinfo.value.code == 1
-                mock_show.assert_called_once()
+            with patch("ase.visualize.view", side_effect=RuntimeError("No display available")):
+                with patch("matplotlib.pyplot.show", side_effect=RuntimeError("No display")) as mock_show:
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+                    mock_show.assert_called_once()
 
 
 def test_open_browser_viewer(poscar_path):
