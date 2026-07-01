@@ -170,12 +170,26 @@ cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuu
 # and writes scf.in with calculation = 'scf' and updated atom/type counts.
 cellify -i vc-relax.out --template template.in -o scf.in --calc scf
 ```
+```mermaid
+graph TD
+    subgraph Inputs ["Input Files"]
+        A["vc-relax.out (QE Output Log)<br/>➔ Contains relaxed atomic coordinates"]
+        B["template.in (Input Template)<br/>➔ Contains K-points, parameters, etc."]
+    end
 
-<p align="center">
-  <img src="docs/images/ex8_input.png" width="280" alt="Initial Unrelaxed Structure" />
-  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
-  <img src="docs/images/ex8_output.png" width="280" alt="Extracted Relaxed Structure" />
-</p>
+    C["cellify -i vc-relax.out --template template.in -o scf.in --calc scf"]
+
+    subgraph Output ["Output File"]
+        D["scf.in (Merged SCF Input)<br/>✓ Merged parameters & coordinates<br/>✓ Updated 'nat', 'ntyp' & calculation='scf'"]
+    end
+
+    A --> C
+    B --> C
+    C --> D
+
+    style C fill:#238636,color:#fff,stroke:#2ea44f,stroke-width:2px;
+    style D fill:#1f6feb,color:#fff,stroke:#58a6ff,stroke-width:2px;
+```
 
 For more hands-on examples, check out the `examples/` directory.
 

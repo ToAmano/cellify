@@ -38,7 +38,6 @@ def main():
 
     poscar_path = os.path.join(root_dir, "tests/POSCAR")
     qe_in_path = os.path.join(root_dir, "tests/qe.in")
-    relax_out_path = os.path.join(root_dir, "tests/divacancy_relax_gamma.out")
 
     # ==========================================
     # Example 1: POSCAR -> 2x2x3 Supercell
@@ -195,16 +194,7 @@ def main():
         rotation="10x,45y,0z",
     )
 
-    # ==========================================
-    # Example 8: vc-relax.out -> relaxed coordinates extraction
-    # ==========================================
-    # Read the initial structure (frame 0) from QE output log
-    ex8_in_atoms = ase_read(relax_out_path, format="espresso-out", index=0)
-    # Read the final relaxed structure (frame -1)
-    ex8_out_atoms = ase_read(relax_out_path, format="espresso-out", index=-1)
 
-    save_render(ex8_in_atoms, os.path.join(output_dir, "ex8_input.png"), rotation="15x,45y,0z")
-    save_render(ex8_out_atoms, os.path.join(output_dir, "ex8_output.png"), rotation="15x,45y,0z")
 
 
 if __name__ == "__main__":
