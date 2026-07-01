@@ -91,6 +91,12 @@ cellify -i POSCAR -o POSCAR_223 --dim 2 2 3
 cellify -i Si_primitive.POSCAR -o Si_conventional_222.POSCAR --conventional --dim 2 2 2
 ```
 
+<p align="center">
+  <img src="docs/images/ex3_primitive.png" width="150" alt="Primitive Cell" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex3_conventional.png" width="150" alt="Conventional Cell" />
+</p>
+
 ### 3. Orthogonalize a hexagonal cell (Quantum ESPRESSO input)
 ```bash
 # Preserves &CONTROL and &SYSTEM settings, and updates nat, CELL_PARAMETERS, and ATOMIC_POSITIONS
@@ -107,6 +113,12 @@ cellify -i POSCAR -o POSCAR_defect_bulk --min-dist 15.0
 cellify -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
 ```
 
+<p align="center">
+  <img src="docs/images/ex5_bulk.png" width="150" alt="Bulk Silicon" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex5_doped.png" width="150" alt="Doped Silicon" />
+</p>
+
 ### 6. Introduce vacancies in a supercell (e.g., delete a specific Silicon atom, or randomly remove 2 Oxygen atoms)
 ```bash
 # Deletes the Silicon atom at absolute index 0
@@ -116,10 +128,22 @@ cellify -i Si_supercell.POSCAR -o Si_vacancy.POSCAR --vacancy-index "Si:0"
 cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy-count "O:2"
 ```
 
+<p align="center">
+  <img src="docs/images/ex5_bulk.png" width="150" alt="Bulk Silicon" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex6_vacancy.png" width="150" alt="Silicon with Vacancy" />
+</p>
+
 ### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
 ```bash
 cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
 ```
+
+<p align="center">
+  <img src="docs/images/ex7_bulk.png" width="150" alt="Bulk STO" />
+  <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
+  <img src="docs/images/ex7_slab.png" width="100" alt="STO (100) Slab" />
+</p>
 
 ### 8. Extract relaxed structure from a Quantum ESPRESSO output log and generate an SCF input
 ```bash
