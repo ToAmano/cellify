@@ -170,7 +170,7 @@ def main():
 
     ax.set_axis_off()
     plt.tight_layout()
-    ex6_out_path = os.path.join(output_dir, "ex6_output.png")
+    ex6_out_path = os.path.join(output_dir, "ex6_vacancy_annotated.png")
     plt.savefig(ex6_out_path, bbox_inches="tight", transparent=True, dpi=200)
     plt.close(fig)
     print(f"Saved: {ex6_out_path}")

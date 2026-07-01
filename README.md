@@ -149,7 +149,7 @@ cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy-count "O:2"
 <p align="center">
   <img src="docs/images/ex6_input.png" width="280" alt="Si 2x2x2 Supercell" />
   <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
-  <img src="docs/images/ex6_output.png" width="280" alt="Si Supercell with Vacancy" />
+  <img src="docs/images/ex6_vacancy_annotated.png" width="280" alt="Si Supercell with Vacancy" />
 </p>
 
 ### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
