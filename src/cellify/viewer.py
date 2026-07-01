@@ -12,7 +12,7 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
   <title>cellify 3D Structure Viewer</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/3dmol/2.4.2/3Dmol-min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
   <style>
     * {
       box-sizing: border-box;
