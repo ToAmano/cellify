@@ -281,6 +281,7 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
     let model = null;
     let selectedRep = null;
     let unitCellRep = null;
+    let clickLabel = null;
 
     const cifData = `{{CIF_DATA}}`;
 
@@ -370,6 +371,10 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
         viewer.removeRepresentation(selectedRep);
         selectedRep = null;
       }
+      if (clickLabel) {
+        viewer.removeLabel(clickLabel);
+        clickLabel = null;
+      }
       viewer.render();
     }
 
@@ -383,6 +388,29 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
         opacity: 0.6,
         scale: 1.3
       });
+
+      if (clickLabel) {
+        viewer.removeLabel(clickLabel);
+        clickLabel = null;
+      }
+
+      const labelText = `${atom.elem} (Index: ${atom.index})\n` +
+                        `X: ${atom.x.toFixed(3)}\n` +
+                        `Y: ${atom.y.toFixed(3)}\n` +
+                        `Z: ${atom.z.toFixed(3)}`;
+
+      clickLabel = viewer.addLabel(labelText, {
+        position: { x: atom.x, y: atom.y, z: atom.z },
+        backgroundColor: "#16161a",
+        backgroundOpacity: 0.9,
+        fontColor: "#ffffff",
+        borderColor: "#4f46e5",
+        borderWidth: 1.5,
+        fontSize: 12,
+        fontFamily: "Outfit, sans-serif",
+        inFront: true
+      });
+
       viewer.render();
 
       const atoms = model.getAtoms();
