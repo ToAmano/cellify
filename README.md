@@ -1,12 +1,12 @@
 # cellify
 
-A user-friendly command-line interface (CLI) tool designed for DFT researchers to quickly generate supercells and prepare calculation-ready inputs (VASP, Quantum ESPRESSO, etc.) from unit cells.
-
 [![PyPI version](https://badge.fury.io/py/cellify.svg)](https://badge.fury.io/py/cellify)
 [![Python versions](https://img.shields.io/pypi/pyversions/cellify.svg)](https://pypi.org/project/cellify/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Test Suite](https://github.com/ToAmano/cellify/actions/workflows/tests.yml/badge.svg)](https://github.com/ToAmano/cellify/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/ToAmano/cellify/branch/main/graph/badge.svg)](https://codecov.io/gh/ToAmano/cellify)
+
+A user-friendly command-line interface (CLI) tool designed for DFT researchers to quickly generate supercells and prepare calculation-ready inputs (VASP, Quantum ESPRESSO, etc.) from unit cells.
 
 ---
 
