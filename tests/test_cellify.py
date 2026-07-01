@@ -479,3 +479,369 @@ def test_cli_main_view_error(poscar_path, tmp_path):
                     main()
                 assert excinfo.value.code == 1
                 mock_view.assert_called_once()
+
+
+def test_cli_extract_relaxation(tmp_path):
+    # 1. Create a mock PWSCF output log file
+    qe_relax_out = tmp_path / "relax.out"
+    content = """
+Program PWSCF
+celldm(1)    8.0
+number of atoms/cell = 2
+number of atomic types = 2
+crystal axes:
+  a(1) = (  1.000000   0.000000   0.000000 )
+  a(2) = (  0.000000   1.000000   0.000000 )
+  a(3) = (  0.000000   0.000000   1.000000 )
+positions (alat units)
+    1           Si  tau(   1) = (   0.0000000   0.0000000   0.0000000  )
+    2           C   tau(   2) = (   0.2500000   0.2500000   0.2500000  )
+
+!    total energy              =     -120.00000000 Ry
+
+CELL_PARAMETERS (angstrom)
+   4.5000  0.0000  0.0000
+   0.0000  4.5000  0.0000
+   0.0000  0.0000  4.5000
+
+ATOMIC_POSITIONS (crystal)
+  Si  0.100000  0.100000  0.100000
+  C   0.300000  0.300000  0.300000
+
+!    total energy              =     -120.10000000 Ry
+"""
+    qe_relax_out.write_text(content)
+
+    # 2. Create a template QE input file
+    qe_relax_in = tmp_path / "relax.in"
+    template_content = """&CONTROL
+  calculation = 'vc-relax'
+  restart_mode = 'from_scratch'
+  pseudo_dir = './'
+  outdir = './'
+/
+&SYSTEM
+  ibrav = 0
+  nat = 2
+  ntyp = 2
+/
+&ELECTRONS
+/
+
+ATOMIC_SPECIES
+  Si  28.085  Si.UPF
+  C   12.011  C.UPF
+
+CELL_PARAMETERS angstrom
+  4.0 0.0 0.0
+  0.0 4.0 0.0
+  0.0 0.0 4.0
+
+ATOMIC_POSITIONS crystal
+  Si  0.0 0.0 0.0
+  C   0.25 0.25 0.25
+"""
+    qe_relax_in.write_text(template_content)
+
+    # 3. Test running cellify with --template and --calc
+    out_file = tmp_path / "scf.in"
+    test_args = [
+        "cellify", "-i", str(qe_relax_out),
+        "--template", str(qe_relax_in),
+        "-o", str(out_file),
+        "--calc", "scf"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+
+    assert out_file.exists()
+    out_content = out_file.read_text()
+    assert "calculation = 'scf'" in out_content or 'calculation = "scf"' in out_content
+    # Check that relaxed coordinates and cell parameters are written
+    assert "4.500000" in out_content
+    assert "0.100000" in out_content
+
+
+def test_cli_extract_relaxation_missing_template(tmp_path):
+    qe_relax_out = tmp_path / "relax.out"
+    content = """
+Program PWSCF
+celldm(1)    8.0
+number of atoms/cell = 2
+number of atomic types = 2
+crystal axes:
+  a(1) = (  1.000000   0.000000   0.000000 )
+  a(2) = (  0.000000   1.000000   0.000000 )
+  a(3) = (  0.000000   0.000000   1.000000 )
+positions (alat units)
+    1           Si  tau(   1) = (   0.0000000   0.0000000   0.0000000  )
+    2           C   tau(   2) = (   0.2500000   0.2500000   0.2500000  )
+
+!    total energy              =     -120.00000000 Ry
+
+CELL_PARAMETERS (angstrom)
+   4.5000  0.0000  0.0000
+   0.0000  4.5000  0.0000
+   0.0000  0.0000  4.5000
+
+ATOMIC_POSITIONS (crystal)
+  Si  0.100000  0.100000  0.100000
+  C   0.300000  0.300000  0.300000
+
+!    total energy              =     -120.10000000 Ry
+"""
+    qe_relax_out.write_text(content)
+
+    out_file = tmp_path / "scf.in"
+    test_args = [
+        "cellify", "-i", str(qe_relax_out),
+        "-o", str(out_file),
+        "--calc", "scf"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_extract_relaxation_template_not_found(tmp_path):
+    qe_relax_out = tmp_path / "relax.out"
+    content = """
+Program PWSCF
+celldm(1)    8.0
+number of atoms/cell = 2
+number of atomic types = 2
+crystal axes:
+  a(1) = (  1.000000   0.000000   0.000000 )
+  a(2) = (  0.000000   1.000000   0.000000 )
+  a(3) = (  0.000000   0.000000   1.000000 )
+positions (alat units)
+    1           Si  tau(   1) = (   0.0000000   0.0000000   0.0000000  )
+    2           C   tau(   2) = (   0.2500000   0.2500000   0.2500000  )
+
+!    total energy              =     -120.00000000 Ry
+
+CELL_PARAMETERS (angstrom)
+   4.5000  0.0000  0.0000
+   0.0000  4.5000  0.0000
+   0.0000  0.0000  4.5000
+
+ATOMIC_POSITIONS (crystal)
+  Si  0.100000  0.100000  0.100000
+  C   0.300000  0.300000  0.300000
+
+!    total energy              =     -120.10000000 Ry
+"""
+    qe_relax_out.write_text(content)
+    test_args = [
+        "cellify", "-i", str(qe_relax_out),
+        "--template", "non_existent_template.in",
+        "-o", str(tmp_path / "scf.in")
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_cli_extract_relaxation_template_corrupt(tmp_path):
+    qe_relax_out = tmp_path / "relax.out"
+    content = """
+Program PWSCF
+celldm(1)    8.0
+number of atoms/cell = 2
+number of atomic types = 2
+crystal axes:
+  a(1) = (  1.000000   0.000000   0.000000 )
+  a(2) = (  0.000000   1.000000   0.000000 )
+  a(3) = (  0.000000   0.000000   1.000000 )
+positions (alat units)
+    1           Si  tau(   1) = (   0.0000000   0.0000000   0.0000000  )
+    2           C   tau(   2) = (   0.2500000   0.2500000   0.2500000  )
+
+!    total energy              =     -120.00000000 Ry
+
+CELL_PARAMETERS (angstrom)
+   4.5000  0.0000  0.0000
+   0.0000  4.5000  0.0000
+   0.0000  0.0000  4.5000
+
+ATOMIC_POSITIONS (crystal)
+  Si  0.100000  0.100000  0.100000
+  C   0.300000  0.300000  0.300000
+
+!    total energy              =     -120.10000000 Ry
+"""
+    qe_relax_out.write_text(content)
+    corrupt_template = tmp_path / "corrupt.in"
+    corrupt_template.write_text("corrupt contents")
+    test_args = [
+        "cellify", "-i", str(qe_relax_out),
+        "--template", str(corrupt_template),
+        "-o", str(tmp_path / "scf.in")
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 1
+
+
+def test_espresso_adapter_write_error_out_mode(poscar_path):
+    from cellify.adapters.espresso import EspressoAdapter
+    structure, _ = load_structure_file(poscar_path)
+    adapter = EspressoAdapter()
+    with pytest.raises(ValueError, match="Cannot write a QE input file using a QE output log"):
+        adapter.write("dummy.in", structure, {"mode": "espresso_out"})
+
+
+def test_espresso_adapter_read_fallback(tmp_path):
+    # Triggers is_output=False (due to &control comment) but espresso-in fails, falling back to espresso-out
+    fake_qe_in = tmp_path / "fake_qe.in"
+    content = """
+# This is a comment containing &control namelist to trigger is_output=False
+Program PWSCF
+celldm(1)    8.0
+number of atoms/cell = 2
+number of atomic types = 2
+crystal axes:
+  a(1) = (  1.000000   0.000000   0.000000 )
+  a(2) = (  0.000000   1.000000   0.000000 )
+  a(3) = (  0.000000   0.000000   1.000000 )
+positions (alat units)
+    1           Si  tau(   1) = (   0.0000000   0.0000000   0.0000000  )
+    2           C   tau(   2) = (   0.2500000   0.2500000   0.2500000  )
+
+!    total energy              =     -120.00000000 Ry
+"""
+    fake_qe_in.write_text(content)
+    from cellify.adapters.espresso import EspressoAdapter
+    adapter = EspressoAdapter()
+    struct, meta = adapter.read(str(fake_qe_in))
+    assert len(struct) == 2
+    assert meta["mode"] == "espresso_out"
+
+
+def test_espresso_adapter_read_fallback_input(tmp_path):
+    # Triggers is_output=True (no &control) but espresso-out fails, falling back to espresso-in
+    fake_qe_in = tmp_path / "fake_qe.in"
+    content = """&SYSTEM
+  ibrav = 0
+  nat = 1
+  ntyp = 1
+/
+ATOMIC_SPECIES
+  Si  28.085  Si.UPF
+CELL_PARAMETERS angstrom
+  4.0 0.0 0.0
+  0.0 4.0 0.0
+  0.0 0.0 4.0
+ATOMIC_POSITIONS crystal
+  Si 0.0 0.0 0.0
+"""
+    fake_qe_in.write_text(content)
+    from cellify.adapters.espresso import EspressoAdapter
+    adapter = EspressoAdapter()
+    struct, meta = adapter.read(str(fake_qe_in))
+    assert len(struct) == 1
+    assert meta["mode"] == "espresso_text_replace"
+
+
+def test_cli_extract_relaxation_real_file(tmp_path):
+    # Test with the real divacancy_relax_gamma.out file
+    import shutil
+    from pathlib import Path
+    real_out_src = Path(__file__).parent / "divacancy_relax_gamma.out"
+    real_out = tmp_path / "divacancy_relax_gamma.out"
+    shutil.copy(real_out_src, real_out)
+
+    # Create a template
+    template_in = tmp_path / "template.in"
+    template_content = """&CONTROL
+  calculation = 'vc-relax'
+/
+&SYSTEM
+  ibrav = 0
+  nat = 2
+  ntyp = 2
+/
+&ELECTRONS
+/
+ATOMIC_SPECIES
+  Si  28.085  Si.UPF
+  C   12.011  C.UPF
+CELL_PARAMETERS angstrom
+  8.0 0.0 0.0
+  0.0 8.0 0.0
+  0.0 0.0 8.0
+ATOMIC_POSITIONS crystal
+  Si 0.0 0.0 0.0
+  C 0.25 0.25 0.25
+"""
+    template_in.write_text(template_content)
+
+    out_file = tmp_path / "scf.in"
+    test_args = [
+        "cellify", "-i", str(real_out),
+        "--template", str(template_in),
+        "-o", str(out_file),
+        "--calc", "scf"
+    ]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+
+    assert out_file.exists()
+    out_content = out_file.read_text()
+    assert "calculation = 'scf'" in out_content or 'calculation = "scf"' in out_content
+    assert "nat = 62" in out_content
+
+
+def test_espresso_adapter_write_default_template(tmp_path):
+    from cellify.adapters.espresso import EspressoAdapter
+    from pymatgen.core import Structure
+    structure = Structure([[4.0, 0, 0], [0, 4.0, 0], [0, 0, 4.0]], ["Si"], [[0.0, 0.0, 0.0]])
+    adapter = EspressoAdapter()
+    out_file = tmp_path / "default_scf.in"
+    adapter.write(str(out_file), structure, {})
+    assert out_file.exists()
+    out_content = out_file.read_text()
+    assert "calculation = 'scf'" in out_content or 'calculation = "scf"' in out_content
+    assert "nat = 1" in out_content
+
+
+def test_cli_default_output_no_ext_poscar(tmp_path):
+    import shutil
+    from pathlib import Path
+    poscar_src = Path(__file__).parent / "POSCAR"
+    temp_poscar = tmp_path / "POSCAR"
+    shutil.copy(poscar_src, temp_poscar)
+    test_args = ["cellify", "-i", str(temp_poscar), "-d", "2", "2", "2"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    expected_out = tmp_path / "POSCAR_supercell"
+    assert expected_out.exists()
+
+
+def test_cli_save_file_error(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "-d", "2", "2", "2"]
+    with patch("sys.argv", test_args):
+        with patch("cellify.cli.save_structure_file", side_effect=RuntimeError("Save failed")) as mock_save:
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+            mock_save.assert_called_once()
+
+
+def test_get_adapter_exception(tmp_path):
+    from cellify.adapters import get_adapter
+    from cellify.adapters.standard import StandardAdapter
+    # A directory path will raise IsADirectoryError when read, triggering the content check exception block
+    adapter = get_adapter(str(tmp_path))
+    assert isinstance(adapter, StandardAdapter)

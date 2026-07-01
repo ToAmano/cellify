@@ -64,6 +64,8 @@ cellify -i <input_file> -o <output_file> [options]
 - `--slab` : Miller indices $h\ k\ l$ for surface slab model creation (e.g., `--slab 1 1 1`).
 - `--thick` : Slab thickness in $\text{Å}$ or layers (e.g., `--thick 15.0`).
 - `--vacuum` : Vacuum layer thickness in $\text{Å}$ (e.g., `--vacuum 15.0`).
+- `--template` : Template QE input file to preserve computational parameters and comments when generating a new input file from a QE output log file.
+- `--calc`, `--calculation` : Override the `calculation` parameter inside the QE input file namelist (e.g., `scf`, `nscf`, `bands`).
 - `-w`, `--view` : Quickly visualize the final generated structure in 3D using ASE (requires GUI environment). If `_tkinter` is missing, it automatically falls back to a 2D matplotlib projection plot.
 
 > [!NOTE]
@@ -117,6 +119,14 @@ cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy-count "O:2"
 ### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
 ```bash
 cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
+```
+
+### 8. Extract relaxed structure from a Quantum ESPRESSO output log and generate an SCF input
+```bash
+# Reads the final relaxed structure from vc-relax.out,
+# merges it with the computational settings in template.in,
+# and writes scf.in with calculation = 'scf' and updated atom/type counts.
+cellify -i vc-relax.out --template template.in -o scf.in --calc scf
 ```
 
 For more hands-on examples, check out the `examples/` directory.
