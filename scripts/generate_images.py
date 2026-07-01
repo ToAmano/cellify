@@ -169,7 +169,7 @@ def main():
 
     ax.set_axis_off()
     plt.tight_layout()
-    ex6_out_path = os.path.join(output_dir, "ex6_vacancy_annotated.png")
+    ex6_out_path = os.path.join(output_dir, "ex6_output.png")
     plt.savefig(ex6_out_path, bbox_inches="tight", transparent=True, dpi=200)
     plt.close(fig)
     print(f"Saved: {ex6_out_path}")
@@ -189,7 +189,7 @@ def main():
     save_render(AseAtomsAdaptor.get_atoms(ex7_in), os.path.join(output_dir, "ex7_input.png"), rotation="15x,45y,0z")
     save_render(
         AseAtomsAdaptor.get_atoms(ex7_out),
-        os.path.join(output_dir, "ex7_slab_large.png"),
+        os.path.join(output_dir, "ex7_output.png"),
         figsize=(3, 9),
         rotation="10x,45y,0z",
     )

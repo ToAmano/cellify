@@ -149,7 +149,7 @@ cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy-count "O:2"
 <p align="center">
   <img src="docs/images/ex6_input.png" width="280" alt="Si 2x2x2 Supercell" />
   <span style="font-size: 2rem; margin: 0 15px; vertical-align: middle;">➔</span>
-  <img src="docs/images/ex6_vacancy_annotated.png" width="280" alt="Si Supercell with Vacancy" />
+  <img src="docs/images/ex6_output.png" width="280" alt="Si Supercell with Vacancy" />
 </p>
 
 ### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
@@ -160,7 +160,7 @@ cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuu
 <p align="center">
   <img src="docs/images/ex7_input.png" width="220" alt="Bulk STO Unit Cell" />
   <span style="font-size: 2rem; margin: 0 25px; vertical-align: middle;">➔</span>
-  <img src="docs/images/ex7_slab_large.png" width="220" alt="STO (100) Surface Slab" />
+  <img src="docs/images/ex7_output.png" width="220" alt="STO (100) Surface Slab" />
 </p>
 
 ### 8. Extract relaxed structure from a Quantum ESPRESSO output log and generate an SCF input
