@@ -59,7 +59,8 @@ cellify -i <input_file> -o <output_file> [options]
 - `--min-dist` : Automatically generate a supercell with minimum periodic image distance $\ge$ specified distance (in $\text{Å}$).
 - `--conventional` : Automatically convert the input structure to its standard conventional representation before applying other operations.
 - `--substitute` : Substitution rule. Format: `element:target_element:index_or_percentage` (e.g., `--substitute "Si:P:0"` or `--substitute "Si:Al:5%"`).
-- `--vacancy` : Vacancy rule. Format: `element:index_or_count` (e.g., `--vacancy "Si:0"`, `--vacancy "O:2"`_).
+- `--vacancy-index` : Create a vacancy by removing an atom at a specific absolute index. Format: `element:index` (e.g., `--vacancy-index "Si:0"`, `--vacancy-index "C:33"`). (Alias: `--vacancy`).
+- `--vacancy-count` : Create vacancies by randomly removing a specified number of atoms of a given element. Format: `element:count` (e.g., `--vacancy-count "O:2"`_).
 - `--slab` : Miller indices $h\ k\ l$ for surface slab model creation (e.g., `--slab 1 1 1`).
 - `--thick` : Slab thickness in $\text{Å}$ or layers (e.g., `--thick 15.0`).
 - `--vacuum` : Vacuum layer thickness in $\text{Å}$ (e.g., `--vacuum 15.0`).
@@ -107,10 +108,10 @@ cellify -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
 ### 6. Introduce vacancies in a supercell (e.g., delete a specific Silicon atom, or randomly remove 2 Oxygen atoms)
 ```bash
 # Deletes the Silicon atom at absolute index 0
-cellify -i Si_supercell.POSCAR -o Si_vacancy.POSCAR --vacancy "Si:0"
+cellify -i Si_supercell.POSCAR -o Si_vacancy.POSCAR --vacancy-index "Si:0"
 
 # Randomly removes 2 Oxygen atoms from the structure
-cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy "O:2"
+cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy-count "O:2"
 ```
 
 ### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum

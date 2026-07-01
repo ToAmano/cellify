@@ -177,17 +177,42 @@ def _substitute_index(
         ) from exc
 
 
-def apply_vacancies(structure: Structure, vacancy_rules: List[str]) -> None:
+def apply_vacancies_by_index(structure: Structure, vacancy_rules: List[str]) -> None:
     """
-    Applies vacancy rules to the structure (deletes specified atoms).
-    Rule formats:
+    Applies vacancy rules to the structure by removing atoms at specific absolute indices.
+    Rule format:
         "Si:0" (deletes Si atom at index 0)
-        "O:2" (randomly deletes 2 oxygen atoms)
     """
     indices_to_remove: List[int] = []
 
     for rule in vacancy_rules:
-        _apply_single_vacancy(structure, rule, indices_to_remove)
+        parts: List[str] = rule.split(":")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid vacancy index rule: {rule}. Must be 'element:index'"
+            )
+
+        src_el: str = parts[0]
+        try:
+            val: int = int(parts[1])
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid vacancy index: {parts[1]} in rule {rule}"
+            ) from exc
+
+        if val < 0 or val >= len(structure):
+            raise IndexError(
+                f"Index {val} out of range (structure size: {len(structure)})"
+            )
+
+        actual_symbol: str = structure[val].specie.symbol
+        if actual_symbol != src_el:
+            print(
+                f"Warning: Site index {val} is '{actual_symbol}', not vacancy element '{src_el}'. Removing anyway."
+            )
+
+        indices_to_remove.append(val)
+        print(f"Removed site {val} ({actual_symbol}) to create vacancy")
 
     if indices_to_remove:
         # Sort indices in descending order to avoid shift errors when removing sites
@@ -195,51 +220,52 @@ def apply_vacancies(structure: Structure, vacancy_rules: List[str]) -> None:
         structure.remove_sites(indices_to_remove)
 
 
-def _apply_single_vacancy(
-    structure: Structure, rule: str, indices_to_remove: List[int]
-) -> None:
+def apply_vacancies_by_count(structure: Structure, vacancy_rules: List[str]) -> None:
     """
-    Applies a single vacancy rule to compile index list for removal.
+    Applies vacancy rules to the structure by randomly removing a specified count of atoms of a given element.
+    Rule format:
+        "O:2" (randomly deletes 2 oxygen atoms)
     """
-    parts: List[str] = rule.split(":")
-    if len(parts) != 3 and len(parts) != 2:
-        raise ValueError(
-            f"Invalid vacancy rule: {rule}. Must be 'element:index' or 'element:count'"
-        )
+    indices_to_remove: List[int] = []
 
-    src_el: str = parts[0]
-    target: str = parts[1]
+    for rule in vacancy_rules:
+        parts: List[str] = rule.split(":")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid vacancy count rule: {rule}. Must be 'element:count'"
+            )
 
-    matching_indices: List[int] = [
-        i for i, site in enumerate(structure) if site.specie.symbol == src_el
-    ]
-    if not matching_indices:
-        print(f"Warning: No matching elements found for vacancy source '{src_el}'")
-        return
+        src_el: str = parts[0]
+        try:
+            val: int = int(parts[1])
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid vacancy count: {parts[1]} in rule {rule}"
+            ) from exc
 
-    try:
-        val: int = int(target)
+        if val < 0:
+            raise ValueError(f"Vacancy count cannot be negative: {val} in rule {rule}")
 
-        # If the value is less than or equal to the count of matching elements, treat as count-based vacancy creation
-        if 0 < val <= len(matching_indices) and len(structure) > 20:
-            remove_subset = np.random.choice(matching_indices, val, replace=False)
-            indices_to_remove.extend(remove_subset)
-            print(f"Created {val} vacancies of {src_el} (randomly selected)")
-        else:
-            # Treat as index-based vacancy creation
-            if val < 0 or val >= len(structure):
-                raise IndexError(f"Index {val} out of range")
+        matching_indices: List[int] = [
+            i for i, site in enumerate(structure) if site.specie.symbol == src_el
+        ]
+        if not matching_indices:
+            print(f"Warning: No matching elements found for vacancy source '{src_el}'")
+            continue
 
-            actual_symbol: str = structure[val].specie.symbol
-            if actual_symbol != src_el:
-                print(
-                    f"Warning: Site index {val} is '{actual_symbol}', not vacancy element '{src_el}'. Removing anyway."
-                )
+        if val > len(matching_indices):
+            raise ValueError(
+                f"Requested vacancy count {val} exceeds available {src_el} atoms ({len(matching_indices)})"
+            )
 
-            indices_to_remove.append(val)
-            print(f"Removed site {val} ({actual_symbol}) to create vacancy")
-    except ValueError as exc:
-        raise ValueError(f"Invalid vacancy target: {target}") from exc
+        remove_subset = np.random.choice(matching_indices, val, replace=False)
+        indices_to_remove.extend(remove_subset)
+        print(f"Created {val} vacancies of {src_el} (randomly selected)")
+
+    if indices_to_remove:
+        # Sort indices in descending order to avoid shift errors when removing sites
+        indices_to_remove = sorted(list(set(indices_to_remove)), reverse=True)
+        structure.remove_sites(indices_to_remove)
 
 
 def generate_surface_slab(
