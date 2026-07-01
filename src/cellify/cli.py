@@ -231,7 +231,7 @@ def _determine_output_path(args: argparse.Namespace) -> str:
 
     base, ext = os.path.splitext(args.input)
     # Special case: VASP files like POSCAR or CONTCAR with no extension
-    if not ext and base in ["POSCAR", "CONTCAR"]:
+    if not ext and os.path.basename(base) in ["POSCAR", "CONTCAR"]:
         return f"{base}_supercell"
     return f"{base}_supercell{ext}"
 
