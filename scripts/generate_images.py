@@ -114,8 +114,66 @@ def main():
     ex6_out = ex6_in.copy()
     apply_vacancies_by_index(ex6_out, ["Si:0"])
 
-    save_render(AseAtomsAdaptor.get_atoms(ex6_in), os.path.join(output_dir, "ex6_input.png"), rotation="15x,45y,0z")
-    save_render(AseAtomsAdaptor.get_atoms(ex6_out), os.path.join(output_dir, "ex6_output.png"), rotation="15x,45y,0z")
+    # Render input first and get position of atom index 0
+    fig, ax = plt.subplots(figsize=(6, 6))
+    plot_atoms(
+        AseAtomsAdaptor.get_atoms(ex6_in),
+        ax,
+        rotation="15x,45y,0z",
+        show_unit_cell=2,
+    )
+    from matplotlib.patches import Circle
+
+    circles = [p for p in ax.patches if isinstance(p, Circle)]
+    vacancy_pos = circles[0].center
+    vacancy_radius = circles[0].radius
+
+    ax.set_axis_off()
+    plt.tight_layout()
+    ex6_in_path = os.path.join(output_dir, "ex6_input.png")
+    plt.savefig(ex6_in_path, bbox_inches="tight", transparent=True, dpi=200)
+    plt.close(fig)
+    print(f"Saved: {ex6_in_path}")
+
+    # Render output and overlay the ghost atom + annotation
+    fig, ax = plt.subplots(figsize=(6, 6))
+    plot_atoms(
+        AseAtomsAdaptor.get_atoms(ex6_out),
+        ax,
+        rotation="15x,45y,0z",
+        show_unit_cell=2,
+    )
+
+    # Draw ghost atom (red dashed circle)
+    ghost = Circle(
+        vacancy_pos,
+        vacancy_radius,
+        fill=False,
+        edgecolor="red",
+        linestyle="--",
+        linewidth=2.0,
+    )
+    ax.add_patch(ghost)
+
+    # Draw arrow and label pointing to it
+    ax.annotate(
+        "Vacancy (Si:0)",
+        xy=vacancy_pos,
+        xytext=(vacancy_pos[0] - 2.5, vacancy_pos[1] + 2.5),
+        arrowprops=dict(
+            facecolor="red", shrink=0.1, width=1.5, headwidth=6, headlength=6
+        ),
+        color="red",
+        fontweight="bold",
+        fontsize=11,
+    )
+
+    ax.set_axis_off()
+    plt.tight_layout()
+    ex6_out_path = os.path.join(output_dir, "ex6_output.png")
+    plt.savefig(ex6_out_path, bbox_inches="tight", transparent=True, dpi=200)
+    plt.close(fig)
+    print(f"Saved: {ex6_out_path}")
 
     # ==========================================
     # Example 7: STO_bulk -> STO_100_slab
