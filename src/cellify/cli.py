@@ -250,12 +250,35 @@ def main() -> None:
     if args.view:
         print("\nOpening structure viewer...")
         try:
+            # Check if tkinter is available for default ASE GUI
+            use_matplotlib: bool = False
+            try:
+                import _tkinter  # noqa: F401 # pylint: disable=unused-import
+            except ImportError:
+                use_matplotlib = True
+
             # pylint: disable=import-outside-toplevel
-            from ase.visualize import view
             from pymatgen.io.ase import AseAtomsAdaptor
 
             atoms = AseAtomsAdaptor.get_atoms(structure)
-            view(atoms)
+
+            if use_matplotlib:
+                print(
+                    "Warning: _tkinter is not available. Falling back to matplotlib 2D projection viewer."
+                )
+                import matplotlib.pyplot as plt
+                from ase.visualize.plot import plot_atoms
+
+                _, ax = plt.subplots(figsize=(6, 6))
+                plot_atoms(atoms, ax, rotation="10x,10y,0z")
+                ax.set_axis_off()
+                plt.tight_layout()
+                print("Close the matplotlib window to continue.")
+                plt.show()
+            else:
+                from ase.visualize import view
+
+                view(atoms)
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Error launching structure viewer: {e}", file=sys.stderr)
             sys.exit(1)
