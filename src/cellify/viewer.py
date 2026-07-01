@@ -1,7 +1,7 @@
 import os
-import sys
 import tempfile
 import webbrowser
+
 from pymatgen.core import Structure
 
 VIEWER_TEMPLATE = """<!DOCTYPE html>
@@ -409,7 +409,8 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
           Y: ${atom.y.toFixed(4)} Å<br>
           Z: ${atom.z.toFixed(4)} Å
         </div>
-        <div style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: #8c8c99; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+        <div style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase;
+                    color: #8c8c99; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
           Nearest Neighbors
         </div>
         <div class="neighbor-list">
