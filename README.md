@@ -94,7 +94,16 @@ cellify -i POSCAR -o POSCAR_defect_bulk --min-dist 15.0
 cellify -i Si_unit.cif -o Si_doped.POSCAR --dim 3 3 3 --substitute "Si:P:0"
 ```
 
-### 6. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
+### 6. Introduce vacancies in a supercell (e.g., delete a specific Silicon atom, or randomly remove 2 Oxygen atoms)
+```bash
+# Deletes the Silicon atom at absolute index 0
+cellify -i Si_supercell.POSCAR -o Si_vacancy.POSCAR --vacancy "Si:0"
+
+# Randomly removes 2 Oxygen atoms from the structure
+cellify -i STO_supercell.POSCAR -o STO_vacancies.POSCAR --vacancy "O:2"
+```
+
+### 7. Generate a $\text{SrTiO}_3$ (100) surface slab model with $15\ \text{Å}$ vacuum
 ```bash
 cellify -i STO_bulk.cif -o STO_100_slab.POSCAR --slab 1 0 0 --thick 12.0 --vacuum 15.0
 ```
