@@ -400,16 +400,16 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
                         `Z: ${atom.z.toFixed(3)}`;
 
       clickLabel = viewer.addLabel(labelText, {
-        position: { x: atom.x, y: atom.y, z: atom.z },
         backgroundColor: "#16161a",
         backgroundOpacity: 0.9,
         fontColor: "#ffffff",
         borderColor: "#4f46e5",
-        borderWidth: 1.5,
+        borderThickness: 1.5,
         fontSize: 12,
-        fontFamily: "Outfit, sans-serif",
+        font: "Outfit, sans-serif",
+        alignment: "topLeft",
         inFront: true
-      });
+      }, { index: atom.index });
 
       viewer.render();
 
