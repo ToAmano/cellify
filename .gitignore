@@ -46,4 +46,4 @@ env/
 .flake8
 
 # AI Agent
-.agents/
+# Custom agent skills are tracked to share capabilities across workspaces.
