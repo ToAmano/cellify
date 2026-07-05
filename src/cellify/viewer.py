@@ -379,86 +379,96 @@ VIEWER_TEMPLATE = """<!DOCTYPE html>
     }
 
     function inspectAtom(atom) {
-      if (selectedRep) {
-        viewer.removeRepresentation(selectedRep);
-      }
-      selectedRep = viewer.addRepresentation("sphere", {
-        sel: { index: atom.index },
-        color: "#f59e0b",
-        opacity: 0.6,
-        scale: 1.3
-      });
-
-      if (clickLabel) {
-        viewer.removeLabel(clickLabel);
-        clickLabel = null;
-      }
-
-      const labelText = `${atom.elem} (Index: ${atom.index})\n` +
-                        `X: ${atom.x.toFixed(3)}\n` +
-                        `Y: ${atom.y.toFixed(3)}\n` +
-                        `Z: ${atom.z.toFixed(3)}`;
-
-      clickLabel = viewer.addLabel(labelText, {
-        backgroundColor: "#16161a",
-        backgroundOpacity: 0.9,
-        fontColor: "#ffffff",
-        borderColor: "#4f46e5",
-        borderThickness: 1.5,
-        fontSize: 12,
-        font: "Outfit, sans-serif",
-        alignment: "topLeft",
-        inFront: true
-      }, { index: atom.index });
-
-      viewer.render();
-
-      const atoms = model.getAtoms();
-      let neighbors = [];
-      for (let i = 0; i < atoms.length; i++) {
-        let a = atoms[i];
-        if (a.index === atom.index) continue;
-        let dx = a.x - atom.x;
-        let dy = a.y - atom.y;
-        let dz = a.z - atom.z;
-        let d = Math.sqrt(dx*dx + dy*dy + dz*dz);
-        neighbors.push({ index: a.index, elem: a.elem, dist: d });
-      }
-      neighbors.sort((x, y) => x.dist - y.dist);
-      const topNeighbors = neighbors.slice(0, 5);
-
-      let html = `
-        <div style="font-weight: 600; font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-          <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#f59e0b;"></span>
-          Atom #${atom.index} (${atom.elem})
-        </div>
-        <div style="color: #a5a5b0; font-size: 0.85rem; margin-bottom: 12px;">
-          X: ${atom.x.toFixed(4)} Å<br>
-          Y: ${atom.y.toFixed(4)} Å<br>
-          Z: ${atom.z.toFixed(4)} Å
-        </div>
-        <div style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase;
-                    color: #8c8c99; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-          Nearest Neighbors
-        </div>
-        <div class="neighbor-list">
-      `;
-
-      if (topNeighbors.length === 0) {
-        html += '<div style="font-size:0.8rem; color:#8c8c99;">No neighbors found</div>';
-      } else {
-        topNeighbors.forEach(n => {
-          html += `
-            <div class="neighbor-item">
-              <span>Atom #${n.index} (${n.elem})</span>
-              <span style="color:#ffffff; font-weight:600;">${n.dist.toFixed(3)} Å</span>
-            </div>
-          `;
+      try {
+        if (selectedRep) {
+          viewer.removeRepresentation(selectedRep);
+        }
+        selectedRep = viewer.addRepresentation("sphere", {
+          sel: { index: atom.index },
+          color: "#f59e0b",
+          opacity: 0.6,
+          scale: 1.3
         });
-      }
-      html += '</div>';
 
-      $("#inspector-content").html(html);
+        if (clickLabel) {
+          viewer.removeLabel(clickLabel);
+          clickLabel = null;
+        }
+
+        const labelText = `${atom.elem} (Index: ${atom.index})\n` +
+                          `X: ${atom.x.toFixed(3)}\n` +
+                          `Y: ${atom.y.toFixed(3)}\n` +
+                          `Z: ${atom.z.toFixed(3)}`;
+
+        clickLabel = viewer.addLabel(labelText, {
+          position: { x: atom.x, y: atom.y, z: atom.z },
+          backgroundColor: "#16161a",
+          backgroundOpacity: 0.9,
+          fontColor: "#ffffff",
+          borderColor: "#4f46e5",
+          borderThickness: 1.5,
+          fontSize: 12,
+          font: "sans-serif",
+          alignment: "topLeft",
+          inFront: true
+        });
+
+        viewer.render();
+
+        const atoms = model.getAtoms();
+        let neighbors = [];
+        for (let i = 0; i < atoms.length; i++) {
+          let a = atoms[i];
+          if (a.index === atom.index) continue;
+          let dx = a.x - atom.x;
+          let dy = a.y - atom.y;
+          let dz = a.z - atom.z;
+          let d = Math.sqrt(dx*dx + dy*dy + dz*dz);
+          neighbors.push({ index: a.index, elem: a.elem, dist: d });
+        }
+        neighbors.sort((x, y) => x.dist - y.dist);
+        const topNeighbors = neighbors.slice(0, 5);
+
+        let html = `
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#f59e0b;"></span>
+            Atom #${atom.index} (${atom.elem})
+          </div>
+          <div style="color: #a5a5b0; font-size: 0.85rem; margin-bottom: 12px;">
+            X: ${atom.x.toFixed(4)} Å<br>
+            Y: ${atom.y.toFixed(4)} Å<br>
+            Z: ${atom.z.toFixed(4)} Å
+          </div>
+          <div style="font-weight: 600; font-size: 0.8rem; text-transform: uppercase;
+                      color: #8c8c99; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+            Nearest Neighbors
+          </div>
+          <div class="neighbor-list">
+        `;
+
+        if (topNeighbors.length === 0) {
+          html += '<div style="font-size:0.8rem; color:#8c8c99;">No neighbors found</div>';
+        } else {
+          topNeighbors.forEach(n => {
+            html += `
+              <div class="neighbor-item">
+                <span>Atom #${n.index} (${n.elem})</span>
+                <span style="color:#ffffff; font-weight:600;">${n.dist.toFixed(3)} Å</span>
+              </div>
+            `;
+          });
+        }
+        html += '</div>';
+
+        $("#inspector-content").html(html);
+      } catch (err) {
+        console.error("Error in inspectAtom:", err);
+        $("#inspector-content").html(
+          `<div style="color:#ef4444; font-weight:600; font-size:0.9rem; padding:8px;` +
+          `background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); border-radius:8px;">` +
+          `Failed to inspect atom: ${err.message}</div>`
+        );
+      }
     }
   </script>
 </body>
