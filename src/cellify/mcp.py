@@ -3,6 +3,7 @@ MCP (Model Context Protocol) server implementation for cellify.
 Exposes a single structured crystal structure modeling tool to external LLM agents.
 """
 
+# pylint: disable=duplicate-code
 import os
 import uuid
 from typing import Any, Dict, List, Optional
