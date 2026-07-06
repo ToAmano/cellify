@@ -227,11 +227,14 @@ If you check out this repository, the following project-level skills are automat
 
 Any relevant tasks given to Claude Code, Codex, or Antigravity inside this repository will automatically invoke the `cellify` skill to perform structural calculations correctly.
 
-### 2. Using cellify in Your Own Workspaces (Claude Code, Cursor, Aider)
+### 2. Using cellify in Your Own Workspaces (AI Integration)
 If you are running DFT calculations in a separate calculation directory, you can enable your AI assistant to use `cellify` by:
-- **Claude Code CLI**: Copying the `.claude/skills/cellify/` folder into your calculation workspace directory under `.claude/skills/cellify/SKILL.md`.
-- **Google Antigravity / Codex CLI**: Copying the `.agents/skills/cellify/` folder into your calculation workspace directory under `.agents/skills/cellify/SKILL.md` (the standard directory layout for both systems).
-- **Cursor / Aider**: Creating a `.cursorrules` or `.claudeprompt` file at the root of your calculation directory containing:
+- **Claude Code CLI**: Copying the `.claude/skills/cellify/` folder into your calculation workspace. (Or creating a `.claudeprompt` file at the root).
+- **Google Antigravity / Codex CLI**: Copying the `.agents/skills/cellify/` folder into your calculation workspace.
+- **Cursor (IDE)**: Creating a `.cursorrules` file at the root of your calculation directory containing the instructions.
+- **Aider (CLI Coder)**: Adding the instructions below to your system instructions or keeping `SKILL.md` in your workspace files.
+
+#### Instruction Block (for .cursorrules, .claudeprompt, or custom system prompts)
 ```markdown
 You can use `cellify` to generate supercells, conventional cells, slabs, and defects:
 1. Always run `cellify --show-indices` first to locate the exact 0-based atomic indices before applying vacancies (`-v`) or doping (`-d`).
