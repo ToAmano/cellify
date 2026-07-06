@@ -222,9 +222,10 @@ cellify/
 ### 1. Project-level AI Agent Skills
 If you check out this repository, the following project-level skills are automatically loaded:
 - **Claude Code CLI**: [.claude/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.claude/skills/cellify/SKILL.md) (relative symbolic link)
+- **Codex CLI**: [.agents/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.agents/skills/cellify/SKILL.md)
 - **Google Antigravity (AGY)**: [.agents/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.agents/skills/cellify/SKILL.md)
 
-Any relevant tasks given to Claude Code or Antigravity inside this repository will automatically invoke the `cellify` skill to perform structural calculations correctly.
+Any relevant tasks given to Claude Code, Codex, or Antigravity inside this repository will automatically invoke the `cellify` skill to perform structural calculations correctly.
 
 ### 2. Using cellify in Your Own Workspaces (Claude Code, Cursor, Aider)
 If you are running DFT calculations in a separate calculation directory, you can enable your AI assistant to use `cellify` by:
