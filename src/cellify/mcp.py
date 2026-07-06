@@ -1,18 +1,16 @@
 """
 MCP (Model Context Protocol) server implementation for cellify.
-Exposes structure manipulation tools to external LLM agents.
+Exposes a single structured crystal structure modeling tool to external LLM agents.
 """
 
 import os
 import re
-import sys
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
+from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 from pymatgen.core import Structure
-
-from mcp.server.fastmcp import FastMCP
 
 from cellify.core import (
     apply_substitutions,
@@ -93,7 +91,10 @@ def _get_structure_string(
     ext: str
     base, ext = os.path.splitext(input_filepath)
     if not ext:
-        if meta_data.get("mode") == "standard" or os.path.basename(base) in ["POSCAR", "CONTCAR"]:
+        if meta_data.get("mode") == "standard" or os.path.basename(base) in [
+            "POSCAR",
+            "CONTCAR",
+        ]:
             ext = "_POSCAR"
         elif meta_data.get("mode") in ["espresso_text_replace", "espresso_out"]:
             ext = ".in"
@@ -146,239 +147,154 @@ def _normalize_rules(rules: Optional[List[str]]) -> List[str]:
     return rules
 
 
-@mcp.tool()
-def cellify_info(filepath: str) -> str:
-    """
-    Get detailed information about a crystal structure, including lattice parameters,
-    atomic species, and a table of 0-based absolute atomic indices and coordinates.
-    This is highly recommended to call before generating defects to locate atom indices.
-
-    Args:
-        filepath: Path to the input structure file (e.g. POSCAR, cif, qe.in, qe.out).
-    """
-    if not os.path.exists(filepath):
-        return f"Error: File '{filepath}' not found."
-
-    try:
-        structure: Structure
-        meta_data: Dict[str, Any]
-        structure, meta_data = load_structure_file(filepath)
-        summary: str = _get_structure_summary_str(
-            structure, f"Structure Info for {os.path.basename(filepath)}"
-        )
-        indices: str = _get_atomic_indices_str(structure)
-        return f"{summary}\n{indices}"
-    except Exception as e:
-        return f"Error loading file details: {str(e)}"
-
-
-@mcp.tool()
-def cellify_conventional(filepath: str, output_path: Optional[str] = None) -> str:
-    """
-    Convert a crystal structure (e.g., primitive cell downloaded from materials databases)
-    into its conventional standard cell representation.
-
-    Args:
-        filepath: Path to the input structure file.
-        output_path: Optional path to save the resulting conventional cell. If omitted,
-                     the formatted structure content is returned as text.
-    """
-    if not os.path.exists(filepath):
-        return f"Error: File '{filepath}' not found."
-
-    try:
-        structure: Structure
-        meta_data: Dict[str, Any]
-        structure, meta_data = load_structure_file(filepath)
-        conv_structure: Structure = convert_to_conventional(structure)
-
-        if output_path:
-            save_structure_file(output_path, conv_structure, meta_data)
-            return (
-                f"Successfully converted to conventional cell and saved to {output_path}.\n"
-                f"{_get_structure_summary_str(conv_structure)}"
-            )
-        else:
-            return _get_structure_string(conv_structure, meta_data, filepath)
-    except Exception as e:
-        return f"Error converting to conventional cell: {str(e)}"
-
-
-@mcp.tool()
-def cellify_supercell(
-    filepath: str,
+@mcp.tool()  # type: ignore[misc]
+def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-return-statements,broad-exception-caught
+    input_path: str,
+    output_path: Optional[str] = None,
+    template: Optional[str] = None,
+    calc: Optional[str] = None,
     dim: Optional[str] = None,
     min_dist: Optional[float] = None,
     conventional: bool = False,
-    output_path: Optional[str] = None,
-) -> str:
-    """
-    Generate a supercell from a structure file. Supports diagonal scaling, transformation matrix,
-    or automatic scaling based on minimum periodic distance.
-
-    Args:
-        filepath: Path to the input structure file.
-        dim: Scaling dimensions. Specify either as diagonal factors (e.g., '2 2 2') or
-             a 3x3 transformation matrix (e.g., '2 0 0 / 0 2 0 / 0 0 2').
-        min_dist: Target minimum periodic distance in Angstroms for automatic scaling.
-        conventional: If True, converts the structure to its conventional cell before scaling.
-        output_path: Optional path to save the resulting supercell. If omitted,
-                     the formatted structure content is returned as text.
-    """
-    if not os.path.exists(filepath):
-        return f"Error: File '{filepath}' not found."
-
-    try:
-        structure: Structure
-        meta_data: Dict[str, Any]
-        structure, meta_data = load_structure_file(filepath)
-
-        if conventional:
-            structure = convert_to_conventional(structure)
-
-        _apply_scaling(structure, dim, min_dist)
-
-        if output_path:
-            save_structure_file(output_path, structure, meta_data)
-            return (
-                f"Successfully generated supercell and saved to {output_path}.\n"
-                f"{_get_structure_summary_str(structure)}"
-            )
-        else:
-            return _get_structure_string(structure, meta_data, filepath)
-    except Exception as e:
-        return f"Error generating supercell: {str(e)}"
-
-
-@mcp.tool()
-def cellify_defect(
-    filepath: str,
     substitute: Optional[List[str]] = None,
     vacancy_index: Optional[List[str]] = None,
     vacancy_count: Optional[List[str]] = None,
-    dim: Optional[str] = None,
-    min_dist: Optional[float] = None,
-    conventional: bool = False,
-    output_path: Optional[str] = None,
+    slab: Optional[str] = None,
+    thick: Optional[float] = None,
+    vacuum: Optional[float] = None,
+    show_indices: bool = False,
 ) -> str:
     """
-    Introduce defects (vacancies and/or doping/substitutions) into a crystal structure.
-    Optionally scales the structure to a supercell before applying defects.
+    All-in-one crystal structure modeling tool for cellify.
+    Generate supercells, conventional cells, slabs, vacancies, and substitutions.
 
     Args:
-        filepath: Path to the input structure file.
-        substitute: List of substitution rules, e.g. ["Si:Ge:0", "Si:Al:12%"].
-        vacancy_index: List of vacancy rules by index, e.g. ["Si:0,4"].
-        vacancy_count: List of vacancy rules by count, e.g. ["Si:2"].
-        dim: Scaling dimensions for supercell generation (diagonal factors or matrix).
-        min_dist: Target minimum periodic distance in Angstroms for automatic scaling.
-        conventional: If True, converts the structure to its conventional cell before scaling/defects.
-        output_path: Optional path to save the resulting defect structure. If omitted,
+        input_path: Path to the input structure file (e.g. POSCAR, cif, qe.in, qe.out).
+        output_path: Optional path to save the resulting structure. If omitted,
                      the formatted structure content is returned as text.
+        template: Optional template QE input file to preserve computational parameters.
+        calc: Optional override for the QE calculation parameter (e.g. scf, nscf).
+        dim: Scaling dimensions (diagonal factors '2 2 2' or 3x3 matrix).
+        min_dist: Target minimum periodic distance in Angstroms for automatic scaling.
+        conventional: Convert input structure to conventional standard cell first.
+        substitute: List of substitution rules (e.g. ['Si:Ge:0', 'Si:Al:12%']).
+        vacancy_index: List of vacancy rules by index (e.g. ['Si:0,4']).
+        vacancy_count: List of vacancy rules by count (e.g. ['Si:2']).
+        slab: Miller indices for surface slab generation (e.g. '1 1 1' or '1,1,1').
+        thick: Slab thickness in Angstroms or layers (required if slab is specified).
+        vacuum: Vacuum layer thickness in Angstroms (required if slab is specified).
+        show_indices: Print absolute atomic indices and coordinate mapping.
     """
-    if not os.path.exists(filepath):
-        return f"Error: File '{filepath}' not found."
+    if not os.path.exists(input_path):
+        return f"Error: Input file '{input_path}' not found."
+
+    log: List[str] = []
+    log.append(f"Loading structure from: {input_path}")
 
     try:
         structure: Structure
         meta_data: Dict[str, Any]
-        structure, meta_data = load_structure_file(filepath)
+        structure, meta_data = load_structure_file(input_path)
+    except Exception as e:
+        return f"Error loading file: {str(e)}"
 
-        if conventional:
-            structure = convert_to_conventional(structure)
+    log.append(_get_structure_summary_str(structure))
 
-        _apply_scaling(structure, dim, min_dist)
+    # 1. Template & calculation override handling
+    if template:
+        if not os.path.exists(template):
+            return f"Error: Template file '{template}' not found."
+        try:
+            template_meta: Dict[str, Any]
+            _, template_meta = load_structure_file(template)
+            meta_data = template_meta
+        except Exception as e:
+            return f"Error loading template file: {str(e)}"
 
-        # Apply substitutions/doping
-        sub_list: List[str] = _normalize_rules(substitute)
-        if sub_list:
+    if calc:
+        meta_data["calculation"] = calc
+
+    # 2. Conventional cell conversion
+    if conventional:
+        log.append("Converting structure to standard conventional cell...")
+        structure = convert_to_conventional(structure)
+
+    # 3. Supercell generation
+    if dim or min_dist is not None:
+        try:
+            _apply_scaling(structure, dim, min_dist)
+            if dim:
+                log.append(f"Applied scaling: {dim}")
+            else:
+                log.append(f"Applied min-dist scaling (>= {min_dist} A)")
+        except Exception as e:
+            return f"Error applying scaling: {str(e)}"
+
+    # 4. Substitutions/defects
+    sub_list: List[str] = _normalize_rules(substitute)
+    if sub_list:
+        try:
             apply_substitutions(structure, sub_list)
+            log.append(f"Applied substitutions: {sub_list}")
+        except Exception as e:
+            return f"Error applying substitutions: {str(e)}"
 
-        # Apply vacancies by index
-        vac_idx_list: List[str] = _normalize_rules(vacancy_index)
-        if vac_idx_list:
+    vac_idx_list: List[str] = _normalize_rules(vacancy_index)
+    if vac_idx_list:
+        try:
             apply_vacancies_by_index(structure, vac_idx_list)
+            log.append(f"Applied vacancy index rules: {vac_idx_list}")
+        except Exception as e:
+            return f"Error applying vacancy index: {str(e)}"
 
-        # Apply vacancies by count
-        vac_cnt_list: List[str] = _normalize_rules(vacancy_count)
-        if vac_cnt_list:
+    vac_cnt_list: List[str] = _normalize_rules(vacancy_count)
+    if vac_cnt_list:
+        try:
             apply_vacancies_by_count(structure, vac_cnt_list)
+            log.append(f"Applied vacancy count rules: {vac_cnt_list}")
+        except Exception as e:
+            return f"Error applying vacancy count: {str(e)}"
 
-        if output_path:
+    # 5. Slab generation
+    if slab:
+        if thick is None or vacuum is None:
+            return (
+                "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
+            )
+        try:
+            miller_indices: List[int] = [
+                int(x) for x in re.split(r"[\s,;]+", slab.strip()) if x
+            ]
+            if len(miller_indices) != 3:
+                return f"Error: Miller indices must contain exactly 3 integers, got {miller_indices}"
+            structure = generate_surface_slab(structure, miller_indices, thick, vacuum)
+            log.append(f"Generated slab model for Miller indices: {miller_indices}")
+        except Exception as e:
+            return f"Error generating slab: {str(e)}"
+
+    # Summary of final structure
+    log.append(_get_structure_summary_str(structure, label="Final structure summary:"))
+
+    if show_indices:
+        log.append(_get_atomic_indices_str(structure))
+
+    # Output handling
+    if output_path:
+        try:
             save_structure_file(output_path, structure, meta_data)
-            return (
-                f"Successfully applied defects and saved to {output_path}.\n"
-                f"{_get_structure_summary_str(structure)}"
-            )
-        else:
-            return _get_structure_string(structure, meta_data, filepath)
-    except Exception as e:
-        return f"Error applying defects: {str(e)}"
-
-
-@mcp.tool()
-def cellify_slab(
-    filepath: str,
-    miller: str,
-    thick: float,
-    vacuum: float,
-    dim: Optional[str] = None,
-    min_dist: Optional[float] = None,
-    conventional: bool = True,
-    output_path: Optional[str] = None,
-) -> str:
-    """
-    Generate a surface slab model with a specified Miller indices and vacuum thickness.
-    Highly recommended to conventionalize the input cell first to ensure intuitive slab cutting.
-
-    Args:
-        filepath: Path to the input structure file.
-        miller: Miller indices of the surface plane. Format as e.g. '1 1 1' or '1,1,1'.
-        thick: Slab thickness in Angstroms or layers (minimum layer/atomic layers).
-        vacuum: Vacuum layer thickness in Angstroms.
-        dim: Scaling dimensions for final supercell generation (diagonal factors or matrix).
-        min_dist: Target minimum periodic distance in Angstroms for automatic scaling.
-        conventional: If True (default), converts the structure to its conventional cell first.
-        output_path: Optional path to save the resulting slab model. If omitted,
-                     the formatted structure content is returned as text.
-    """
-    if not os.path.exists(filepath):
-        return f"Error: File '{filepath}' not found."
-
-    try:
-        structure: Structure
-        meta_data: Dict[str, Any]
-        structure, meta_data = load_structure_file(filepath)
-
-        if conventional:
-            structure = convert_to_conventional(structure)
-
-        # Parse Miller indices
-        miller_indices: List[int] = [
-            int(x) for x in re.split(r"[\s,;]+", miller.strip()) if x
-        ]
-        if len(miller_indices) != 3:
-            raise ValueError(
-                f"Miller indices 'miller' must contain exactly 3 integers, got {miller_indices}"
-            )
-
-        # Generate surface slab
-        slab_structure: Structure = generate_surface_slab(
-            structure, miller_indices, thick, vacuum
-        )
-
-        _apply_scaling(slab_structure, dim, min_dist)
-
-        if output_path:
-            save_structure_file(output_path, slab_structure, meta_data)
-            return (
-                f"Successfully generated slab model and saved to {output_path}.\n"
-                f"{_get_structure_summary_str(slab_structure)}"
-            )
-        else:
-            return _get_structure_string(slab_structure, meta_data, filepath)
-    except Exception as e:
-        return f"Error generating surface slab: {str(e)}"
+            log.append(f"Successfully saved final structure to: {output_path}")
+            return "\n".join(log)
+        except Exception as e:
+            return f"Error saving file: {str(e)}"
+    else:
+        # Return formatted structure content directly
+        try:
+            struct_str: str = _get_structure_string(structure, meta_data, input_path)
+            log_str: str = "\n".join(log)
+            # Separate diagnostics from structure content
+            return f"{log_str}\n\n=== STRUCTURE CONTENT ===\n{struct_str}"
+        except Exception as e:
+            return f"Error generating structure text output: {str(e)}"
 
 
 def main() -> None:

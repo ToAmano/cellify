@@ -246,8 +246,4 @@ Go to **Settings** > **Features** > **MCP** and add a new MCP server:
 - **Command**: `cellify-mcp`
 
 ### 3. Exposed Tools
-- `cellify_info`: Inspect crystal cell parameters, elements, total atoms, and atomic coordinate index mapping.
-- `cellify_conventional`: Convert structure to conventional standard cell.
-- `cellify_supercell`: Scale structure using diagonal dimensions, transformation matrix, or minimum periodic distance.
-- `cellify_defect`: Apply vacancies and/or doping substitutions.
-- `cellify_slab`: Generate surface slabs.
+- `cellify`: All-in-one crystal structure modeling tool. Exposes complete parameters for conventional cell conversion, scaling (diagonal dimensions, transformation matrix, or minimum periodic distance), defect generation (vacancies and substitutions), and surface slab cutting in a single, structured tool call.
