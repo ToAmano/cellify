@@ -220,7 +220,8 @@ def main() -> None:  # noqa: C901,CCR001
         structure, pipeline_log = run_cellify_pipeline(
             structure,
             conventional=args.conventional,
-            dim=args.dim or args.matrix,
+            dim=args.dim,
+            matrix=args.matrix,
             min_dist=args.min_dist,
             substitute=args.substitute,
             vacancy_index=args.vacancy_index,

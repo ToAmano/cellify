@@ -354,85 +354,57 @@ def get_atomic_indices_table(structure: Structure) -> str:
     return "\n".join(lines)
 
 
-def apply_supercell_pipeline(  # noqa: CCR001
+def apply_supercell(
     structure: Structure,
-    dim: Optional[Any] = None,
+    dim: Optional[List[int]] = None,
+    matrix: Optional[str] = None,
     min_dist: Optional[float] = None,
 ) -> None:
     """
-    Applies supercell scaling options (diagonal scaling, matrix scaling, or min-distance)
-    to the structure object.
+    Applies supercell generation options to the structure.
     """
-    if dim or min_dist is not None:
-        if dim:
-            if isinstance(dim, list):
-                print(f"Generating supercell with diagonal scaling: {dim}")
-                structure.make_supercell(dim)
-            else:
-                clean_dim: str = str(dim).strip()
-                if "," in clean_dim or "/" in clean_dim or ";" in clean_dim:
-                    matrix: np.ndarray = parse_matrix_string(clean_dim)
-                    print(f"Generating supercell with matrix:\n{matrix}")
-                    structure.make_supercell(matrix)
-                else:
-                    factors: List[int] = [
-                        int(x) for x in re.split(r"[\s,]+", clean_dim) if x
-                    ]
-                    if len(factors) != 3:
-                        raise ValueError(
-                            f"Diagonal scaling 'dim' must contain exactly 3 integers, got {factors}"
-                        )
-                    print(f"Generating supercell with diagonal scaling: {factors}")
-                    structure.make_supercell(factors)
-        elif min_dist is not None:
-            nx: int
-            ny: int
-            nz: int
-            nx, ny, nz = calculate_min_dist_scaling(structure, min_dist)
-            print(
-                f"Calculated scaling for minimum distance >= {min_dist} A: [{nx}, {ny}, {nz}]"
-            )
-            structure.make_supercell([nx, ny, nz])
+    if dim:
+        print(f"Generating supercell with diagonal scaling: {dim}")
+        structure.make_supercell(dim)
+    elif matrix:
+        try:
+            mat: np.ndarray = parse_matrix_string(matrix)
+            print(f"Generating supercell with matrix:\n{mat}")
+            structure.make_supercell(mat)
+        except Exception as e:
+            raise e
+    elif min_dist:
+        nx, ny, nz = calculate_min_dist_scaling(structure, min_dist)
+        print(
+            f"Calculated scaling for minimum distance >= {min_dist} A: [{nx}, {ny}, {nz}]"
+        )
+        structure.make_supercell([nx, ny, nz])
 
 
-def apply_defects_and_slab_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
+def apply_defects_and_slab(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
     structure: Structure,
     substitute: Optional[List[str]] = None,
     vacancy_index: Optional[List[str]] = None,
     vacancy_count: Optional[List[str]] = None,
-    slab: Optional[Any] = None,
+    slab: Optional[List[int]] = None,
     thick: Optional[float] = None,
     vacuum: Optional[float] = None,
 ) -> Structure:
     """
-    Applies defects (substitutions, vacancies) and slab generation options
-    to the structure object, returning the final structure.
+    Applies substitutions, vacancies, and surface slab options to the structure.
     """
-    # 3. Substitutions
     if substitute:
         apply_substitutions(structure, substitute)
 
-    # 4. Vacancy index
     if vacancy_index:
         apply_vacancies_by_index(structure, vacancy_index)
 
-    # 5. Vacancy count
     if vacancy_count:
         apply_vacancies_by_count(structure, vacancy_count)
 
-    # 6. Slab generation
     if slab:
-        if isinstance(slab, (list, tuple)):
-            miller_indices: List[int] = [int(x) for x in slab]
-        else:
-            clean_slab: str = str(slab).strip()
-            miller_indices = [int(x) for x in re.split(r"[\s,;]+", clean_slab) if x]
-        if len(miller_indices) != 3:
-            raise ValueError(
-                f"Miller indices must contain exactly 3 integers, got {miller_indices}"
-            )
-        print(f"Generating slab model for Miller indices: {miller_indices}")
-        structure = generate_surface_slab(structure, miller_indices, thick, vacuum)
+        print(f"Generating slab model for Miller indices: {slab}")
+        structure = generate_surface_slab(structure, slab, thick, vacuum)
 
     return structure
 
@@ -440,12 +412,13 @@ def apply_defects_and_slab_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-
 def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
     structure: Structure,
     conventional: bool = False,
-    dim: Optional[Any] = None,
+    dim: Optional[List[int]] = None,
+    matrix: Optional[str] = None,
     min_dist: Optional[float] = None,
     substitute: Optional[List[str]] = None,
     vacancy_index: Optional[List[str]] = None,
     vacancy_count: Optional[List[str]] = None,
-    slab: Optional[Any] = None,
+    slab: Optional[List[int]] = None,
     thick: Optional[float] = None,
     vacuum: Optional[float] = None,
 ) -> Tuple[Structure, str]:
@@ -461,10 +434,10 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
             structure = convert_to_conventional(structure)
 
         # 2. Supercell generation
-        apply_supercell_pipeline(structure, dim=dim, min_dist=min_dist)
+        apply_supercell(structure, dim=dim, matrix=matrix, min_dist=min_dist)
 
         # 3. Defects and Slab generation
-        structure = apply_defects_and_slab_pipeline(
+        structure = apply_defects_and_slab(
             structure,
             substitute=substitute,
             vacancy_index=vacancy_index,

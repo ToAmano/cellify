@@ -5,6 +5,7 @@ Exposes a single structured crystal structure modeling tool to external LLM agen
 
 # pylint: disable=duplicate-code
 import os
+import re
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -120,20 +121,45 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     if calc:
         meta_data["calculation"] = calc
 
-    if slab and (thick is None or vacuum is None):
-        return "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
+    # Parse dim to d_list (List[int]) or m_str (str)
+    d_list: Optional[List[int]] = None
+    m_str: Optional[str] = None
+    if dim:
+        clean_dim = dim.strip()
+        if "," in clean_dim or "/" in clean_dim or ";" in clean_dim:
+            m_str = clean_dim
+        else:
+            try:
+                d_list = [int(x) for x in re.split(r"[\s,]+", clean_dim) if x]
+            except ValueError:
+                return f"Error: Invalid scaling format '{dim}'."
+
+    # Parse slab to s_list (List[int])
+    s_list: Optional[List[int]] = None
+    if slab:
+        if thick is None or vacuum is None:
+            return (
+                "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
+            )
+        try:
+            s_list = [int(x) for x in re.split(r"[\s,;]+", slab.strip()) if x]
+            if len(s_list) != 3:
+                return f"Error: Miller indices must contain exactly 3 integers, got {s_list}"
+        except ValueError:
+            return f"Error: Invalid Miller indices format '{slab}'."
 
     # Execute modeling pipeline
     try:
         structure, pipeline_log = run_cellify_pipeline(
             structure,
             conventional=conventional,
-            dim=dim,
+            dim=d_list,
+            matrix=m_str,
             min_dist=min_dist,
             substitute=substitute,
             vacancy_index=vacancy_index,
             vacancy_count=vacancy_count,
-            slab=slab,
+            slab=s_list,
             thick=thick,
             vacuum=vacuum,
         )
