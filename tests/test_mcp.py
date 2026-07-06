@@ -7,6 +7,9 @@ import shutil
 from unittest.mock import patch
 
 import pytest
+
+pytest.importorskip("mcp")
+
 from pymatgen.core import Structure
 
 import cellify.mcp as mcp_mod
