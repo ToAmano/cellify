@@ -1,1 +1,0 @@
-../../../.agents/skills/cellify/SKILL.md

@@ -6,7 +6,7 @@ This document defines project-scoped rules and style guidelines for AI agents wo
 
 Whenever you modify any features, CLI arguments, core logic, or adapters in `cellify`:
 - **README.md**: You MUST update [README.md](file:///Users/amano/works/research/supercell/README.md) to reflect the changes (e.g., new arguments, examples, or behavior changes).
-- **SKILL.md**: You MUST update the main Antigravity Skill guide at [.agents/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.agents/skills/cellify/SKILL.md) (which automatically propagates to the Claude Code and Codex CLI directories via relative symbolic links) to ensure other agents can correctly utilize the updated features.
+- **SKILL.md**: You MUST update the main Antigravity Skill guide at [.agents/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.agents/skills/cellify/SKILL.md) (which automatically propagates to the Claude Code directory via a relative symbolic link) to ensure other agents can correctly utilize the updated features.
 
 ## 2. Safe Push Rules
 

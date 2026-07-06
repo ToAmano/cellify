@@ -49,5 +49,3 @@ env/
 # Custom agent skills are tracked to share capabilities across workspaces.
 .claude/*
 !.claude/skills/
-.codex/*
-!.codex/skills/
