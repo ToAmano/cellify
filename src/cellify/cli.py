@@ -147,8 +147,14 @@ def main() -> None:  # noqa: C901,CCR001
     args: argparse.Namespace = parse_args()
 
     if not os.path.exists(args.input):
-        print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
-        sys.exit(1)
+        if "/" not in args.input and "\\" not in args.input and "." not in args.input:
+            from cellify.core import retrieve_cif_by_formula
+
+            retrieve_cif_by_formula(args.input)
+            sys.exit(0)
+        else:
+            print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
+            sys.exit(1)
 
     print(f"Loading structure from: {args.input}")
     try:

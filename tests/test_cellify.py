@@ -336,6 +336,112 @@ def test_cli_main_missing_file():
         assert excinfo.value.code == 1
 
 
+def test_cli_main_formula_query(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.0},
+                },
+            },
+            {
+                "id": "mp-9999",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": "N/A"},
+                },
+            },
+        ]
+    }
+    mock_cod_response = {
+        "data": [
+            {
+                "id": "1526655",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self.json_data
+
+        if "materialsproject.org" in url:
+            return MockResponse(mock_mp_response, 200)
+        if "crystallography.net" in url:
+            return MockResponse(mock_cod_response, 200)
+        return MockResponse({}, 404)
+
+    with patch("requests.get", side_effect=mock_get):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "Querying Materials Project OPTIMADE" in captured.out
+    assert "Found 2 structures in Materials Project" in captured.out
+    assert "mp-165" in captured.out
+    assert "0.0000 eV/atom" in captured.out
+    assert "mp-9999" in captured.out
+    assert "N/A eV/atom" in captured.out
+    assert "Querying Crystallography Open Database (COD)" in captured.out
+    assert "Found 1 structures in COD" in captured.out
+    assert "1526655" in captured.out
+
+
+def test_cli_main_formula_query_status_non_200(capsys):
+    def mock_get_error(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, status_code):
+                self.status_code = status_code
+
+            def json(self):
+                return {}
+
+        return MockResponse(500)
+
+    with patch("requests.get", side_effect=mock_get_error):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "Materials Project returned status code: 500" in captured.out
+    assert "COD returned status code: 500" in captured.out
+
+
+def test_cli_main_formula_query_error(capsys):
+    def mock_get_error(url, *args, **kwargs):
+        raise RuntimeError("Connection timed out")
+
+    with patch("requests.get", side_effect=mock_get_error):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "Error querying Materials Project: Connection timed out" in captured.out
+    assert "Error querying COD: Connection timed out" in captured.out
+
+
 def test_cli_main_invalid_matrix(poscar_path):
     test_args = ["cellify", "-i", poscar_path, "--matrix", "1 0 / 0 1"]
     with patch("sys.argv", test_args):

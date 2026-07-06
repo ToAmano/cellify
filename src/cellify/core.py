@@ -12,6 +12,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import requests  # type: ignore[import-untyped]
 from pymatgen.core import Structure
 from pymatgen.core.surface import SlabGenerator
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -501,3 +502,54 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
         )
 
     return structure, log_stream.getvalue()
+
+
+def retrieve_cif_by_formula(formula: str) -> None:
+    """
+    Queries OPTIMADE servers for the given chemical formula and prints the results.
+    """
+    # 1. Query Materials Project OPTIMADE
+    print(f"Querying Materials Project OPTIMADE for '{formula}'...")
+    try:
+        mp_url = f"https://optimade.materialsproject.org/v1/structures?filter=chemical_formula_hill=%22{formula}%22"
+        r = requests.get(mp_url, timeout=10)
+        if r.status_code == 200:
+            data = r.json().get("data", [])
+            print(f"Found {len(data)} structures in Materials Project:")
+            for idx, entry in enumerate(data[:5]):
+                attrs = entry.get("attributes", {})
+                desc = attrs.get("chemical_formula_descriptive", formula)
+                stability = attrs.get("_mp_stability", {})
+                e_above_hull = stability.get("energy_above_hull", "N/A")
+                if isinstance(e_above_hull, float):
+                    e_above_hull_str = f"{e_above_hull:.4f}"
+                else:
+                    e_above_hull_str = str(e_above_hull)
+                print(
+                    f"  [{idx+1}] ID: {entry.get('id')} | Formula: {desc} | "
+                    f"Energy Above Hull: {e_above_hull_str} eV/atom"
+                )
+        else:
+            print(f"Materials Project returned status code: {r.status_code}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error querying Materials Project: {e}")
+
+    # 2. Query Crystallography Open Database (COD) OPTIMADE
+    print(f"\nQuerying Crystallography Open Database (COD) OPTIMADE for '{formula}'...")
+    try:
+        cod_url = (
+            f"https://www.crystallography.net/cod/optimade/v1/structures"
+            f"?filter=chemical_formula_hill=%22{formula}%22&page_limit=5"
+        )
+        r = requests.get(cod_url, timeout=10)
+        if r.status_code == 200:
+            data = r.json().get("data", [])
+            print(f"Found {len(data)} structures in COD:")
+            for idx, entry in enumerate(data[:5]):
+                attrs = entry.get("attributes", {})
+                desc = attrs.get("chemical_formula_descriptive", formula)
+                print(f"  [{idx+1}] ID: {entry.get('id')} | Formula: {desc}")
+        else:
+            print(f"COD returned status code: {r.status_code}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error querying COD: {e}")
