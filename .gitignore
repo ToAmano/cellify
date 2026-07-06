@@ -47,3 +47,5 @@ env/
 
 # AI Agent
 # Custom agent skills are tracked to share capabilities across workspaces.
+.claude/*
+!.claude/skills/
