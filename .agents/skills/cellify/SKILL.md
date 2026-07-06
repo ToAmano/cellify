@@ -9,6 +9,7 @@ This skill guides you in using `cellify` to manipulate crystal structure files (
 
 ## 1. When to Use This Skill
 Use this skill when you need to perform the following structure-building tasks:
+- **Structure Retrieval**: Search and list crystal structure candidates from public databases (Materials Project and COD) by chemical formula using OPTIMADE.
 - **Conventionalization**: Convert primitive/arbitrary unit cells to standard conventional cells (`--conventional`).
 - **Supercell Generation**: Build larger periodic structures (`--supercell` or `-s`) from a unit cell.
 - **Vacancy / Defect Builder**: Remove (`--vacancy` or `-v`) or substitute (`--doping` or `-d`) atoms to model defects or dopants.
@@ -21,11 +22,11 @@ Use this skill when you need to perform the following structure-building tasks:
 
 The CLI syntax is:
 ```bash
-cellify -i <INPUT_FILE> [OPTIONS] -o <OUTPUT_FILE>
+cellify -i <INPUT_FILE_OR_FORMULA> [OPTIONS] -o <OUTPUT_FILE>
 ```
 
 ### Main Options
-- `-i, --input PATH`: Path to the input structure file (formats: VASP `POSCAR`/`CONTCAR`, `*.cif`, or Quantum ESPRESSO `*.in`).
+- `-i, --input PATH_OR_FORMULA`: Path to the input structure file (formats: VASP `POSCAR`/`CONTCAR`, `*.cif`, or Quantum ESPRESSO `*.in`). If the file does not exist, it is interpreted as a chemical formula (e.g. `Si`, `TiO2`, `H3S`), and `cellify` queries public OPTIMADE servers to search and display available crystal structures.
 - `-o, --output PATH`: Path to write the output structure file (format auto-detected by extension/filename).
 - `-w, --view`: Opens the 3D WebGL viewer in your default browser.
 - `--show-indices`: Dumps a neat table of absolute 0-based atomic indices, elements, fractional, and Cartesian coordinates to stdout, then exits.
@@ -70,17 +71,22 @@ When working with Quantum ESPRESSO `*.in` files:
 
 ## 4. Practical Examples
 
-### Example 1: Create a 2x2x2 Supercell of Silicon
+### Example 1: Search Crystal Structure Candidates by Chemical Formula
+```bash
+cellify -i TiO2
+```
+
+### Example 2: Create a 2x2x2 Supercell of Silicon
 ```bash
 cellify -i POSCAR -s 2 2 2 -o POSCAR_222
 ```
 
-### Example 2: Inspect Indices of a Slab Model
+### Example 3: Inspect Indices of a Slab Model
 ```bash
 cellify -i qe.in --conventional --slab 1,1,1,3,15 --show-indices
 ```
 
-### Example 3: Create a Doped Divacancy Model in 3C-SiC
+### Example 4: Create a Doped Divacancy Model in 3C-SiC
 ```bash
 # 1. Convert to conventional cell, scale, and print indices to locate C atoms
 cellify -i POSCAR --conventional -s 2 2 2 --show-indices

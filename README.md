@@ -201,7 +201,7 @@ For more hands-on examples, check out the `examples/` directory.
 cellify/
 ├── pyproject.toml
 ├── README.md
-├── examples/         # Runnable use cases for VASP and Quantum ESPRESSO
+├── examples/         # Runnable use cases (VASP, QE, and OPTIMADE queries)
 └── src/
     └── cellify/
         ├── __init__.py
