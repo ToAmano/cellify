@@ -214,3 +214,26 @@ cellify/
             ├── espresso.py   # Quantum ESPRESSO adapter
             └── standard.py   # Standard pymatgen/ASE adapter
 ```
+
+## AI & Agentic Integration
+
+`cellify` is designed to be highly compatible with modern AI coding assistants (e.g., Claude Code, Cursor, Aider, Google Antigravity). Storing instructions about how to use `cellify` in your workspace helps AI agents work autonomously and build defect models without error loops.
+
+### 1. Antigravity Skill
+If you are using Google Antigravity (AGY), this repository includes a project-level Skill under `.agents/skills/cellify/SKILL.md`. It is automatically loaded when you open this workspace.
+
+### 2. General AI Assistants (Claude Code, Cursor, Aider)
+If you are running calculations in a separate workspace, you can instruct your AI assistant to use `cellify` by providing the skill instructions.
+
+#### Claude Code (`.claudeprompt`)
+Create a `.claudeprompt` file at the root of your calculation directory:
+```markdown
+You can use `cellify` to generate supercells, conventional cells, slabs, and defects:
+1. Always run `cellify --show-indices` first to locate the exact 0-based atomic indices before applying vacancies (`-v`) or doping (`-d`).
+2. Run `cellify -i input_file -s X Y Z -o output_file` to scale.
+3. For vacancies and doping, format rules as: `-v Si:0,12` (remove Si at index 0 and 12) or `-d Si:Ge:0` (doping).
+4. Run `cellify -i input_file --conventional --slab h,k,l,thickness,vacuum -o output_file` for surface slabs.
+```
+
+#### Cursor (`.cursorrules`) / Aider (`.aider.conf.yml`)
+Copy and paste the instructions above into your `.cursorrules` or configure Aider to read `.agents/skills/cellify/SKILL.md` from the `cellify` installation directory to enable seamless structural modeling.
