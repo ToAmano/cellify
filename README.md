@@ -207,6 +207,7 @@ cellify/
         ├── __init__.py
         ├── cli.py            # CLI parser & execution flow
         ├── core.py           # Core structure modeling logic
+        ├── mcp.py            # MCP server implementation
         ├── viewer.py         # WebGL 3D structure viewer
         └── adapters/         # Formats and parameter preservation
             ├── __init__.py
