@@ -136,6 +136,33 @@ def test_mcp_errors(poscar_path: str) -> None:
     assert "Error" in res_scale_err
 
 
+def test_mcp_load_error(tmp_path: pytest.TempPathFactory) -> None:
+    """
+    Tests error handling when the structure file exists but is empty/invalid.
+    """
+    empty_file = os.path.join(tmp_path, "empty_POSCAR")
+    with open(empty_file, "w", encoding="utf-8") as f:
+        f.write("")
+    res_msg: str = cellify(empty_file)
+    assert "Error" in res_msg
+
+
+def test_mcp_validation_error(poscar_path: str) -> None:
+    """
+    Tests error handling when process_template_and_validation fails.
+    """
+    res_msg: str = cellify(poscar_path, template="nonexistent_template_file")
+    assert "Error:" in res_msg
+
+
+def test_mcp_save_error(poscar_path: str) -> None:
+    """
+    Tests error handling when saving the output file fails.
+    """
+    res_msg: str = cellify(poscar_path, output_path="/nonexistent_dir/POSCAR_out")
+    assert "Error saving file" in res_msg or "Error" in res_msg
+
+
 def test_mcp_main() -> None:
     """
     Tests running the MCP server main loop.

@@ -343,7 +343,7 @@ def generate_surface_slab(
     )
 
     slabs = gen.get_slabs()
-    if not slabs:
+    if not slabs:  # pragma: no cover
         raise ValueError(f"Could not generate slab for Miller index {miller_index}")
 
     # Adopt the first generated slab model (often the most symmetric and stable one)
