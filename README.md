@@ -207,6 +207,7 @@ cellify/
         ├── __init__.py
         ├── cli.py            # CLI parser & execution flow
         ├── core.py           # Core structure modeling logic
+        ├── mcp.py            # MCP server implementation
         ├── viewer.py         # WebGL 3D structure viewer
         └── adapters/         # Formats and parameter preservation
             ├── __init__.py
@@ -214,6 +215,39 @@ cellify/
             ├── espresso.py   # Quantum ESPRESSO adapter
             └── standard.py   # Standard pymatgen/ASE adapter
 ```
+
+## Model Context Protocol (MCP) Integration
+
+`cellify` includes a built-in MCP server that exposes crystal structure modeling capabilities to external AI assistants (such as Claude Desktop or Cursor).
+
+### 1. Installation
+To run the MCP server, install `cellify` with the `mcp` optional dependencies:
+```bash
+pip install "cellify[mcp]"
+```
+
+### 2. Configuration
+
+#### Claude Desktop
+Add the following to your `claude_desktop_config.json` (located at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+```json
+{
+  "mcpServers": {
+    "cellify": {
+      "command": "cellify-mcp"
+    }
+  }
+}
+```
+
+#### Cursor
+Go to **Settings** > **Features** > **MCP** and add a new MCP server:
+- **Name**: `cellify`
+- **Type**: `command`
+- **Command**: `cellify-mcp`
+
+### 3. Exposed Tools
+- `cellify`: All-in-one crystal structure modeling tool. Exposes complete parameters for conventional cell conversion, scaling (diagonal dimensions, transformation matrix, or minimum periodic distance), defect generation (vacancies and substitutions), and surface slab cutting in a single, structured tool call.
 
 ## AI & Agentic Integration
 

@@ -4,7 +4,10 @@ Handles structure loading, supercell generation, substitutions,
 vacancies, slab generation, and file saving using pymatgen and ASE.
 """
 
+import contextlib
+import io
 import math
+import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -32,6 +35,54 @@ def save_structure_file(
     """
     adapter: BaseAdapter = get_adapter(filepath)
     adapter.write(filepath, structure, meta_data)
+
+
+def determine_output_path(input_path: str, output_path: Optional[str] = None) -> str:
+    """
+    Determines the output file path.
+    """
+    if output_path:
+        return output_path
+
+    base, ext = os.path.splitext(input_path)
+    # Special case: VASP files like POSCAR or CONTCAR with no extension
+    if not ext and os.path.basename(base) in ["POSCAR", "CONTCAR"]:
+        return f"{base}_supercell"
+    return f"{base}_supercell{ext}"
+
+
+def process_template_and_validation(
+    meta_data: Dict[str, Any],
+    output_path: Optional[str],
+    template_path: Optional[str] = None,
+    calc: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Handles template loading, calculation overrides, and QE I/O format validations.
+    """
+    if template_path:
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template file '{template_path}' not found.")
+        _, template_meta = load_structure_file(template_path)
+        meta_data = template_meta
+
+    if calc:
+        meta_data["calculation"] = calc
+
+    if output_path:
+        is_input_qe_output = meta_data.get("mode") == "espresso_out"
+        lower_out_path = output_path.lower()
+        is_output_qe_input = (
+            any(lower_out_path.endswith(ext) for ext in [".in", ".qe", ".pwi"])
+            or "qe" in lower_out_path
+            or "espresso" in lower_out_path
+        )
+        if is_input_qe_output and is_output_qe_input and not template_path:
+            raise ValueError(
+                "A template QE input file must be specified when reading from a QE output log file and writing to a QE input file."
+            )
+
+    return meta_data
 
 
 def convert_to_conventional(structure: Structure) -> Structure:
@@ -292,9 +343,161 @@ def generate_surface_slab(
     )
 
     slabs = gen.get_slabs()
-    if not slabs:
+    if not slabs:  # pragma: no cover
         raise ValueError(f"Could not generate slab for Miller index {miller_index}")
 
     # Adopt the first generated slab model (often the most symmetric and stable one)
     slab = slabs[0]
     return slab
+
+
+def get_structure_summary(structure: Structure, label: str = "") -> str:
+    """
+    Returns a formatted summary string of the structure.
+    """
+    lines: List[str] = []
+    if label:
+        lines.append(label)
+    lines.append(f"  Formula: {structure.composition.reduced_formula}")
+    lines.append(f"  Volume:  {structure.volume:.3f} A^3")
+    lines.append(f"  Number of atoms: {len(structure)}")
+    if label:
+        lines.append("  Lattice constants:")
+        lines.append(
+            f"    a = {structure.lattice.a:.4f} A, b = {structure.lattice.b:.4f} A, c = {structure.lattice.c:.4f} A"
+        )
+        lines.append(
+            f"    alpha = {structure.lattice.alpha:.2f} deg, beta = {structure.lattice.beta:.2f} deg, gamma = {structure.lattice.gamma:.2f} deg"
+        )
+    return "\n".join(lines)
+
+
+def get_atomic_indices_table(structure: Structure) -> str:
+    """
+    Returns a formatted table string of all atomic indices and coordinates.
+    """
+    lines: List[str] = []
+    lines.append("\nAbsolute Atomic Indices & Coordinates:")
+    lines.append("-" * 78)
+    header: str = (
+        f"{'Index':<6} {'Element':<8} "
+        f"{'Fractional Coordinates (a, b, c)':<36} "
+        f"{'Cartesian (x, y, z)':<22}"
+    )
+    lines.append(header)
+    lines.append("-" * 78)
+    for idx, site in enumerate(structure):
+        frac: str = (
+            f"[{site.frac_coords[0]:.4f}, "
+            f"{site.frac_coords[1]:.4f}, "
+            f"{site.frac_coords[2]:.4f}]"
+        )
+        cart: str = (
+            f"[{site.coords[0]:.3f}, "
+            f"{site.coords[1]:.3f}, "
+            f"{site.coords[2]:.3f}]"
+        )
+        lines.append(f"{idx:<6} {site.species_string:<8} {frac:<36} {cart:<22}")
+    lines.append("-" * 78)
+    lines.append(f"Total: {len(structure)} atoms ({structure.composition.formula})")
+    return "\n".join(lines)
+
+
+def apply_supercell(
+    structure: Structure,
+    dim: Optional[List[int]] = None,
+    matrix: Optional[str] = None,
+    min_dist: Optional[float] = None,
+) -> Structure:
+    """
+    Applies supercell generation options to the structure.
+    """
+    if dim:
+        print(f"Generating supercell with diagonal scaling: {dim}")
+        structure.make_supercell(dim)
+    elif matrix:
+        try:
+            mat: np.ndarray = parse_matrix_string(matrix)
+            print(f"Generating supercell with matrix:\n{mat}")
+            structure.make_supercell(mat)
+        except Exception as e:
+            raise e
+    elif min_dist:
+        nx, ny, nz = calculate_min_dist_scaling(structure, min_dist)
+        print(
+            f"Calculated scaling for minimum distance >= {min_dist} A: [{nx}, {ny}, {nz}]"
+        )
+        structure.make_supercell([nx, ny, nz])
+
+    return structure
+
+
+def apply_defects_and_slab(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
+    structure: Structure,
+    substitute: Optional[List[str]] = None,
+    vacancy_index: Optional[List[str]] = None,
+    vacancy_count: Optional[List[str]] = None,
+    slab: Optional[List[int]] = None,
+    thick: Optional[float] = None,
+    vacuum: Optional[float] = None,
+) -> Structure:
+    """
+    Applies substitutions, vacancies, and surface slab options to the structure.
+    """
+    if substitute:
+        apply_substitutions(structure, substitute)
+
+    if vacancy_index:
+        apply_vacancies_by_index(structure, vacancy_index)
+
+    if vacancy_count:
+        apply_vacancies_by_count(structure, vacancy_count)
+
+    if slab:
+        print(f"Generating slab model for Miller indices: {slab}")
+        structure = generate_surface_slab(structure, slab, thick, vacuum)
+
+    return structure
+
+
+def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
+    structure: Structure,
+    conventional: bool = False,
+    dim: Optional[List[int]] = None,
+    matrix: Optional[str] = None,
+    min_dist: Optional[float] = None,
+    substitute: Optional[List[str]] = None,
+    vacancy_index: Optional[List[str]] = None,
+    vacancy_count: Optional[List[str]] = None,
+    slab: Optional[List[int]] = None,
+    thick: Optional[float] = None,
+    vacuum: Optional[float] = None,
+) -> Tuple[Structure, str]:
+    """
+    Runs the entire modeling pipeline on the structure, capturing all console
+    outputs and returning the final structure along with the captured log string.
+    """
+    log_stream: io.StringIO = io.StringIO()
+    with contextlib.redirect_stdout(log_stream):
+        # 1. Conventional cell conversion
+        if conventional:
+            print("Converting structure to standard conventional cell...")
+            structure = convert_to_conventional(structure)
+
+        # 2. Supercell generation
+        structure = apply_supercell(
+            structure, dim=dim, matrix=matrix, min_dist=min_dist
+        )
+
+        # 3. Defects and Slab generation
+        structure = apply_defects_and_slab(
+            structure,
+            substitute=substitute,
+            vacancy_index=vacancy_index,
+            vacancy_count=vacancy_count,
+            slab=slab,
+            thick=thick,
+            vacuum=vacuum,
+        )
+
+    return structure, log_stream.getvalue()
