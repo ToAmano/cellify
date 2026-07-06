@@ -396,8 +396,8 @@ def test_cli_main_formula_query(capsys):
     assert "0.0000 eV/atom" in captured.out
     assert "mp-9999" in captured.out
     assert "N/A eV/atom" in captured.out
-    assert "Querying Crystallography Open Database (COD)" in captured.out
-    assert "Found 1 structures in COD" in captured.out
+    assert "Querying Crystallography Open Database (COD) OPTIMADE" in captured.out
+    assert "Found 1 structures in Crystallography Open Database (COD)" in captured.out
     assert "1526655" in captured.out
 
 
@@ -422,7 +422,7 @@ def test_cli_main_formula_query_status_non_200(capsys):
 
     captured = capsys.readouterr()
     assert "Materials Project returned status code: 500" in captured.out
-    assert "COD returned status code: 500" in captured.out
+    assert "Crystallography Open Database (COD) returned status code: 500" in captured.out
 
 
 def test_cli_main_formula_query_error(capsys):
@@ -439,7 +439,7 @@ def test_cli_main_formula_query_error(capsys):
 
     captured = capsys.readouterr()
     assert "Error querying Materials Project: Connection timed out" in captured.out
-    assert "Error querying COD: Connection timed out" in captured.out
+    assert "Error querying Crystallography Open Database (COD): Connection timed out" in captured.out
 
 
 def test_cli_main_invalid_matrix(poscar_path):
