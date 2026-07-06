@@ -5,7 +5,6 @@ Exposes a single structured crystal structure modeling tool to external LLM agen
 
 # pylint: disable=duplicate-code
 import os
-import uuid
 from typing import Any, Dict, List, Optional
 
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
@@ -23,36 +22,6 @@ from cellify.core import (
 
 # Initialize the FastMCP server
 mcp: FastMCP = FastMCP("cellify")
-
-
-def _get_structure_string(
-    structure: Structure, meta_data: Dict[str, Any], input_filepath: str
-) -> str:
-    """
-    Saves the structure to a temporary file to capture its formatted output string
-    and returns it, then cleans up the temporary file.
-    """
-    base: str
-    ext: str
-    base, ext = os.path.splitext(input_filepath)
-    if not ext:
-        if meta_data.get("mode") == "standard" or os.path.basename(base) in [
-            "POSCAR",
-            "CONTCAR",
-        ]:
-            ext = "_POSCAR"
-        elif meta_data.get("mode") in ["espresso_text_replace", "espresso_out"]:
-            ext = ".in"
-
-    temp_filename: str = f".__tmp_cellify_mcp_{uuid.uuid4().hex}{ext}"
-    try:
-        save_structure_file(temp_filename, structure, meta_data)
-        with open(temp_filename, "r", encoding="utf-8") as f:
-            content: str = f.read()
-        return content
-    finally:
-        if os.path.exists(temp_filename):
-            os.remove(temp_filename)
 
 
 @mcp.tool()  # type: ignore[misc]
@@ -80,7 +49,7 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     Args:
         input_path: Path to the input structure file (e.g. POSCAR, cif, qe.in, qe.out).
         output_path: Optional path to save the resulting structure. If omitted,
-                     the formatted structure content is returned as text.
+                     automatically determines the filename (e.g. <input_base>_supercell.<ext>).
         template: Optional template QE input file to preserve computational parameters.
         calc: Optional override for the QE calculation parameter (e.g. scf, nscf).
         dim: Diagonal scaling factors for the supercell (e.g., [2, 2, 2]).
@@ -110,18 +79,13 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
 
     log.append(get_structure_summary(structure))
 
-    # 1. Template & calculation validation/processing
+    output_path = determine_output_path(input_path, output_path)
     try:
-        # Determine output path for validation checks
-        validation_output_path = determine_output_path(input_path, output_path)
         meta_data = process_template_and_validation(
-            meta_data, validation_output_path, template, calc
+            meta_data, output_path, template, calc
         )
     except Exception as e:
         return f"Error: {str(e)}"
-
-    if slab and (thick is None or vacuum is None):
-        return "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
 
     # Execute modeling pipeline
     try:
@@ -149,23 +113,13 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     if show_indices:
         log.append(get_atomic_indices_table(structure))
 
-    # Output handling
-    if output_path:
-        try:
-            save_structure_file(output_path, structure, meta_data)
-            log.append(f"Successfully saved final structure to: {output_path}")
-            return "\n".join(log)
-        except Exception as e:
-            return f"Error saving file: {str(e)}"
-    else:
-        # Return formatted structure content directly
-        try:
-            struct_str: str = _get_structure_string(structure, meta_data, input_path)
-            log_str: str = "\n".join(log)
-            # Separate diagnostics from structure content
-            return f"{log_str}\n\n=== STRUCTURE CONTENT ===\n{struct_str}"
-        except Exception as e:
-            return f"Error generating structure text output: {str(e)}"
+    log.append(f"\nSaving final structure to: {output_path}")
+    try:
+        save_structure_file(output_path, structure, meta_data)
+        log.append("Success!")
+        return "\n".join(log)
+    except Exception as e:
+        return f"Error saving file: {str(e)}"
 
 
 def main() -> None:

@@ -3,6 +3,7 @@ Unit and integration tests for the cellify MCP server tool.
 """
 
 import os
+import shutil
 from unittest.mock import patch
 
 import pytest
@@ -29,30 +30,30 @@ def qe_path() -> str:
     return os.path.join(os.path.dirname(__file__), "qe.in")
 
 
-def test_mcp_show_indices(poscar_path: str) -> None:
+def test_mcp_show_indices(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
     """
     Tests the cellify tool with show_indices=True.
     """
-    res: str = cellify(poscar_path, show_indices=True)
+    # Copy POSCAR to tmp_path to avoid contaminating test folder
+    tmp_poscar = os.path.join(tmp_path, "POSCAR")
+    shutil.copy(poscar_path, tmp_poscar)
+
+    res: str = cellify(tmp_poscar, show_indices=True)
     assert "Formula: Si" in res
     assert "Number of atoms: 2" in res
     assert "Absolute Atomic Indices & Coordinates" in res
     assert "0      Si" in res
+    assert "Saving final structure to" in res
+    assert os.path.exists(os.path.join(tmp_path, "POSCAR_supercell"))
 
 
 def test_mcp_conventional(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
     """
     Tests the cellify tool conventional conversion.
     """
-    # Test returning string content
-    res_str: str = cellify(poscar_path, conventional=True)
-    assert "=== STRUCTURE CONTENT ===" in res_str
-    assert "Si" in res_str
-
-    # Test writing to file
     out_file = os.path.join(tmp_path, "POSCAR_conv")
     res_msg: str = cellify(poscar_path, conventional=True, output_path=out_file)
-    assert "Successfully saved final structure to" in res_msg
+    assert "Saving final structure to" in res_msg
     assert os.path.exists(out_file)
 
 
@@ -60,10 +61,6 @@ def test_mcp_supercell(poscar_path: str, tmp_path: pytest.TempPathFactory) -> No
     """
     Tests the cellify tool supercell scaling.
     """
-    # Diagonal scaling text output
-    res_str: str = cellify(poscar_path, dim=[2, 2, 2])
-    assert "=== STRUCTURE CONTENT ===" in res_str
-
     # Diagonal scaling output path
     out_file_diag = os.path.join(tmp_path, "POSCAR_super_diag")
     res_msg_diag: str = cellify(poscar_path, dim=[2, 2, 2], output_path=out_file_diag)
@@ -130,10 +127,6 @@ def test_mcp_errors(poscar_path: str) -> None:
     # Non-existent file error
     res_info: str = cellify("nonexistent_file")
     assert "Error:" in res_info
-
-    # Slab without thickness/vacuum
-    res_slab_err: str = cellify(poscar_path, slab=[1, 1, 1])
-    assert "Error:" in res_slab_err
 
     # Invalid scaling dim format
     res_scale_err: str = cellify(poscar_path, dim=[1, 2])
