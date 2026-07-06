@@ -408,7 +408,7 @@ def apply_supercell(
     dim: Optional[List[int]] = None,
     matrix: Optional[str] = None,
     min_dist: Optional[float] = None,
-) -> None:
+) -> Structure:
     """
     Applies supercell generation options to the structure.
     """
@@ -428,6 +428,8 @@ def apply_supercell(
             f"Calculated scaling for minimum distance >= {min_dist} A: [{nx}, {ny}, {nz}]"
         )
         structure.make_supercell([nx, ny, nz])
+
+    return structure
 
 
 def apply_defects_and_slab(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -483,7 +485,9 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
             structure = convert_to_conventional(structure)
 
         # 2. Supercell generation
-        apply_supercell(structure, dim=dim, matrix=matrix, min_dist=min_dist)
+        structure = apply_supercell(
+            structure, dim=dim, matrix=matrix, min_dist=min_dist
+        )
 
         # 3. Defects and Slab generation
         structure = apply_defects_and_slab(
