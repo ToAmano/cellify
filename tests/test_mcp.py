@@ -61,12 +61,12 @@ def test_mcp_supercell(poscar_path: str, tmp_path: pytest.TempPathFactory) -> No
     Tests the cellify tool supercell scaling.
     """
     # Diagonal scaling text output
-    res_str: str = cellify(poscar_path, dim="2 2 2")
+    res_str: str = cellify(poscar_path, dim=[2, 2, 2])
     assert "=== STRUCTURE CONTENT ===" in res_str
 
     # Diagonal scaling output path
     out_file_diag = os.path.join(tmp_path, "POSCAR_super_diag")
-    res_msg_diag: str = cellify(poscar_path, dim="2 2 2", output_path=out_file_diag)
+    res_msg_diag: str = cellify(poscar_path, dim=[2, 2, 2], output_path=out_file_diag)
     assert "diagonal scaling" in res_msg_diag
     assert "Number of atoms: 16" in res_msg_diag
     assert os.path.exists(out_file_diag)
@@ -74,7 +74,7 @@ def test_mcp_supercell(poscar_path: str, tmp_path: pytest.TempPathFactory) -> No
     # Matrix scaling output path
     out_file_mat = os.path.join(tmp_path, "POSCAR_super_mat")
     res_msg_mat: str = cellify(
-        poscar_path, dim="2 0 0 / 0 2 0 / 0 0 2", output_path=out_file_mat
+        poscar_path, matrix="2 0 0 / 0 2 0 / 0 0 2", output_path=out_file_mat
     )
     assert "with matrix" in res_msg_mat
     assert "Number of atoms: 16" in res_msg_mat
@@ -97,7 +97,7 @@ def test_mcp_defect(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
         poscar_path,
         substitute=["Si:Ge:0"],
         vacancy_index=["Si:1"],
-        dim="2 2 2",
+        dim=[2, 2, 2],
         output_path=out_file,
     )
     assert "Replaced site 0" in res_msg
@@ -117,7 +117,7 @@ def test_mcp_slab(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
     """
     out_file = os.path.join(tmp_path, "POSCAR_slab")
     res_msg: str = cellify(
-        poscar_path, slab="1 1 1", thick=4.0, vacuum=10.0, output_path=out_file
+        poscar_path, slab=[1, 1, 1], thick=4.0, vacuum=10.0, output_path=out_file
     )
     assert "Generating slab model for Miller indices" in res_msg
     assert os.path.exists(out_file)
@@ -132,11 +132,11 @@ def test_mcp_errors(poscar_path: str) -> None:
     assert "Error:" in res_info
 
     # Slab without thickness/vacuum
-    res_slab_err: str = cellify(poscar_path, slab="1 1 1")
+    res_slab_err: str = cellify(poscar_path, slab=[1, 1, 1])
     assert "Error:" in res_slab_err
 
     # Invalid scaling dim format
-    res_scale_err: str = cellify(poscar_path, dim="1 2")
+    res_scale_err: str = cellify(poscar_path, dim=[1, 2])
     assert "Error" in res_scale_err
 
 

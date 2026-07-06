@@ -5,7 +5,6 @@ Exposes a single structured crystal structure modeling tool to external LLM agen
 
 # pylint: disable=duplicate-code
 import os
-import re
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -60,13 +59,14 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     output_path: Optional[str] = None,
     template: Optional[str] = None,
     calc: Optional[str] = None,
-    dim: Optional[str] = None,
+    dim: Optional[List[int]] = None,
+    matrix: Optional[str] = None,
     min_dist: Optional[float] = None,
     conventional: bool = False,
     substitute: Optional[List[str]] = None,
     vacancy_index: Optional[List[str]] = None,
     vacancy_count: Optional[List[str]] = None,
-    slab: Optional[str] = None,
+    slab: Optional[List[int]] = None,
     thick: Optional[float] = None,
     vacuum: Optional[float] = None,
     show_indices: bool = False,
@@ -81,13 +81,14 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
                      the formatted structure content is returned as text.
         template: Optional template QE input file to preserve computational parameters.
         calc: Optional override for the QE calculation parameter (e.g. scf, nscf).
-        dim: Scaling dimensions (diagonal factors '2 2 2' or 3x3 matrix).
+        dim: Diagonal scaling factors for the supercell (e.g., [2, 2, 2]).
+        matrix: 3x3 transformation matrix (e.g. '1 0 0 / 0 1 0 / 0 0 2').
         min_dist: Target minimum periodic distance in Angstroms for automatic scaling.
         conventional: Convert input structure to conventional standard cell first.
         substitute: List of substitution rules (e.g. ['Si:Ge:0', 'Si:Al:12%']).
-        vacancy_index: List of vacancy rules by index (e.g. ['Si:0,4']).
+        vacancy_index: List of vacancy rules by index (e.g. ['Si:0', 'Si:4']).
         vacancy_count: List of vacancy rules by count (e.g. ['Si:2']).
-        slab: Miller indices for surface slab generation (e.g. '1 1 1' or '1,1,1').
+        slab: Miller indices for surface slab generation (e.g. [1, 1, 1]).
         thick: Slab thickness in Angstroms or layers (required if slab is specified).
         vacuum: Vacuum layer thickness in Angstroms (required if slab is specified).
         show_indices: Print absolute atomic indices and coordinate mapping.
@@ -121,45 +122,21 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     if calc:
         meta_data["calculation"] = calc
 
-    # Parse dim to d_list (List[int]) or m_str (str)
-    d_list: Optional[List[int]] = None
-    m_str: Optional[str] = None
-    if dim:
-        clean_dim = dim.strip()
-        if "," in clean_dim or "/" in clean_dim or ";" in clean_dim:
-            m_str = clean_dim
-        else:
-            try:
-                d_list = [int(x) for x in re.split(r"[\s,]+", clean_dim) if x]
-            except ValueError:
-                return f"Error: Invalid scaling format '{dim}'."
-
-    # Parse slab to s_list (List[int])
-    s_list: Optional[List[int]] = None
-    if slab:
-        if thick is None or vacuum is None:
-            return (
-                "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
-            )
-        try:
-            s_list = [int(x) for x in re.split(r"[\s,;]+", slab.strip()) if x]
-            if len(s_list) != 3:
-                return f"Error: Miller indices must contain exactly 3 integers, got {s_list}"
-        except ValueError:
-            return f"Error: Invalid Miller indices format '{slab}'."
+    if slab and (thick is None or vacuum is None):
+        return "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
 
     # Execute modeling pipeline
     try:
         structure, pipeline_log = run_cellify_pipeline(
             structure,
             conventional=conventional,
-            dim=d_list,
-            matrix=m_str,
+            dim=dim,
+            matrix=matrix,
             min_dist=min_dist,
             substitute=substitute,
             vacancy_index=vacancy_index,
             vacancy_count=vacancy_count,
-            slab=s_list,
+            slab=slab,
             thick=thick,
             vacuum=vacuum,
         )
