@@ -248,3 +248,20 @@ Go to **Settings** > **Features** > **MCP** and add a new MCP server:
 
 ### 3. Exposed Tools
 - `cellify`: All-in-one crystal structure modeling tool. Exposes complete parameters for conventional cell conversion, scaling (diagonal dimensions, transformation matrix, or minimum periodic distance), defect generation (vacancies and substitutions), and surface slab cutting in a single, structured tool call.
+
+## AI & Agentic Integration
+
+`cellify` is designed to be highly compatible with modern AI coding assistants (e.g., Claude Code, Cursor, Aider, Google Antigravity). Storing instructions about how to use `cellify` in your workspace helps AI agents work autonomously and build defect models without error loops.
+
+### 1. Project-level AI Agent Skills
+If you check out this repository, the following project-level skills are automatically loaded:
+- **Claude Code CLI**: [.claude/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.claude/skills/cellify/SKILL.md) (relative symbolic link)
+- **Codex CLI**: [.agents/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.agents/skills/cellify/SKILL.md)
+- **Google Antigravity (AGY)**: [.agents/skills/cellify/SKILL.md](file:///Users/amano/works/research/supercell/.agents/skills/cellify/SKILL.md)
+
+Any relevant tasks given to Claude Code, Codex, or Antigravity inside this repository will automatically invoke the `cellify` skill to perform structural calculations correctly.
+
+### 2. Using cellify in Your Own Workspaces (AI Integration)
+If you are running DFT calculations in a separate calculation directory, you can enable your AI assistant to use `cellify` by copying the corresponding skill folder into your calculation workspace:
+- **Claude Code CLI**: Copy the `.claude/skills/cellify/` folder into your calculation workspace.
+- **Google Antigravity / Codex CLI**: Copy the `.agents/skills/cellify/` folder into your calculation workspace.
