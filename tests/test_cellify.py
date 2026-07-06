@@ -442,6 +442,22 @@ def test_cli_main_formula_query_error(capsys):
     assert "Error querying Crystallography Open Database (COD): Connection timed out" in captured.out
 
 
+def test_cli_main_formula_query_invalid_formula(capsys):
+    def mock_get_error(url, *args, **kwargs):
+        raise RuntimeError("early exit")
+
+    with patch("requests.get", side_effect=mock_get_error):
+        test_args = ["cellify", "-i", "invalid-formula-123!"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "Error querying Materials Project: early exit" in captured.out
+
+
 def test_cli_main_invalid_matrix(poscar_path):
     test_args = ["cellify", "-i", poscar_path, "--matrix", "1 0 / 0 1"]
     with patch("sys.argv", test_args):

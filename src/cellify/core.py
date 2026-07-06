@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import requests  # type: ignore[import-untyped]
-from pymatgen.core import Structure
+from pymatgen.core import Composition, Structure
 from pymatgen.core.surface import SlabGenerator
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
@@ -524,6 +524,11 @@ def retrieve_cif_by_formula(formula: str) -> None:
     """
     Queries OPTIMADE servers for the given chemical formula and prints the results.
     """
+    try:
+        hill_formula = Composition(formula).hill_formula.replace(" ", "")
+    except Exception:  # pylint: disable=broad-exception-caught
+        hill_formula = formula
+
     databases = {
         "Materials Project": "https://optimade.materialsproject.org/v1/structures",
         "Crystallography Open Database (COD)": "https://www.crystallography.net/cod/optimade/v1/structures",
@@ -532,9 +537,10 @@ def retrieve_cif_by_formula(formula: str) -> None:
     for name, base_url in databases.items():
         print(f"Querying {name} OPTIMADE for '{formula}'...")
         try:
-            url = f"{base_url}?filter=chemical_formula_descriptive=%22{formula}%22"
-            if name == "Crystallography Open Database (COD)":
-                url += "&page_limit=5"
+            if name == "Materials Project":
+                url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22"
+            else:
+                url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
             r = requests.get(url, timeout=10)
             if r.status_code == 200:
                 data = r.json().get("data", [])
