@@ -229,10 +229,10 @@ Any relevant tasks given to Claude Code, Codex, or Antigravity inside this repos
 
 ### 2. Using cellify in Your Own Workspaces (AI Integration)
 If you are running DFT calculations in a separate calculation directory, you can enable your AI assistant to use `cellify` by:
-- **Claude Code CLI**: Copying the `.claude/skills/cellify/` folder into your calculation workspace. (Or creating a `.claudeprompt` file at the root containing the instructions below).
+- **Claude Code CLI**: Copying the `.claude/skills/cellify/` folder into your calculation workspace. (Or creating a `CLAUDE.md` file at the root containing the instructions below).
 - **Google Antigravity / Codex CLI**: Copying the `.agents/skills/cellify/` folder into your calculation workspace.
 
-#### Instruction Block (for .claudeprompt or custom system prompts)
+#### Instruction Block (for CLAUDE.md or custom system prompts)
 ```markdown
 You can use `cellify` to generate supercells, conventional cells, slabs, and defects:
 1. Always run `cellify --show-indices` first to locate the exact 0-based atomic indices before applying vacancies (`-v`) or doping (`-d`).
