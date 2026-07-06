@@ -4,80 +4,22 @@ Exposes a single structured crystal structure modeling tool to external LLM agen
 """
 
 import os
-import re
 import uuid
 from typing import Any, Dict, List, Optional
 
-import numpy as np
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 from pymatgen.core import Structure
 
 from cellify.core import (
-    apply_substitutions,
-    apply_vacancies_by_count,
-    apply_vacancies_by_index,
-    calculate_min_dist_scaling,
-    convert_to_conventional,
-    generate_surface_slab,
+    get_atomic_indices_table,
+    get_structure_summary,
     load_structure_file,
-    parse_matrix_string,
+    run_cellify_pipeline,
     save_structure_file,
 )
 
 # Initialize the FastMCP server
 mcp: FastMCP = FastMCP("cellify")
-
-
-def _get_structure_summary_str(structure: Structure, label: str = "") -> str:
-    """
-    Returns a formatted summary of the structure.
-    """
-    lines: List[str] = []
-    if label:
-        lines.append(label)
-    lines.append(f"  Formula: {structure.composition.reduced_formula}")
-    lines.append(f"  Volume:  {structure.volume:.3f} A^3")
-    lines.append(f"  Number of atoms: {len(structure)}")
-    if label:
-        lines.append("  Lattice constants:")
-        lines.append(
-            f"    a = {structure.lattice.a:.4f} A, b = {structure.lattice.b:.4f} A, c = {structure.lattice.c:.4f} A"
-        )
-        lines.append(
-            f"    alpha = {structure.lattice.alpha:.2f} deg, beta = {structure.lattice.beta:.2f} deg, gamma = {structure.lattice.gamma:.2f} deg"
-        )
-    return "\n".join(lines)
-
-
-def _get_atomic_indices_str(structure: Structure) -> str:
-    """
-    Returns a formatted table of all atomic indices and coordinates.
-    """
-    lines: List[str] = []
-    lines.append("\nAbsolute Atomic Indices & Coordinates:")
-    lines.append("-" * 78)
-    header: str = (
-        f"{'Index':<6} {'Element':<8} "
-        f"{'Fractional Coordinates (a, b, c)':<36} "
-        f"{'Cartesian (x, y, z)':<22}"
-    )
-    lines.append(header)
-    lines.append("-" * 78)
-    for idx, site in enumerate(structure):
-        frac: str = (
-            f"[{site.frac_coords[0]:.4f}, "
-            f"{site.frac_coords[1]:.4f}, "
-            f"{site.frac_coords[2]:.4f}]"
-        )
-        cart: str = (
-            f"[{site.coords[0]:.3f}, "
-            f"{site.coords[1]:.3f}, "
-            f"{site.coords[2]:.3f}]"
-        )
-        lines.append(f"{idx:<6} {site.species_string:<8} {frac:<36} {cart:<22}")
-    lines.append("-" * 78)
-    lines.append(f"Total: {len(structure)} atoms ({structure.composition.formula})")
-    return "\n".join(lines)
 
 
 def _get_structure_string(
@@ -108,43 +50,6 @@ def _get_structure_string(
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
-
-
-def _apply_scaling(
-    structure: Structure, dim: Optional[str], min_dist: Optional[float]
-) -> None:
-    """
-    Applies dimension scaling or min-distance scaling to the structure.
-    """
-    if dim:
-        clean_dim: str = dim.strip()
-        if "," in clean_dim or "/" in clean_dim or ";" in clean_dim:
-            matrix: np.ndarray = parse_matrix_string(clean_dim)
-            structure.make_supercell(matrix)
-        else:
-            factors: List[int] = [int(x) for x in re.split(r"[\s,]+", clean_dim) if x]
-            if len(factors) != 3:
-                raise ValueError(
-                    f"Diagonal scaling 'dim' must contain exactly 3 integers, got {factors}"
-                )
-            structure.make_supercell(factors)
-    elif min_dist is not None:
-        nx: int
-        ny: int
-        nz: int
-        nx, ny, nz = calculate_min_dist_scaling(structure, min_dist)
-        structure.make_supercell([nx, ny, nz])
-
-
-def _normalize_rules(rules: Optional[List[str]]) -> List[str]:
-    """
-    Ensures the rules parameter is returned as a list of strings.
-    """
-    if not rules:
-        return []
-    if isinstance(rules, str):
-        return [rules]
-    return rules
 
 
 @mcp.tool()  # type: ignore[misc]
@@ -198,7 +103,7 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     except Exception as e:
         return f"Error loading file: {str(e)}"
 
-    log.append(_get_structure_summary_str(structure))
+    log.append(get_structure_summary(structure))
 
     # 1. Template & calculation override handling
     if template:
@@ -214,69 +119,33 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     if calc:
         meta_data["calculation"] = calc
 
-    # 2. Conventional cell conversion
-    if conventional:
-        log.append("Converting structure to standard conventional cell...")
-        structure = convert_to_conventional(structure)
+    if slab and (thick is None or vacuum is None):
+        return "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
 
-    # 3. Supercell generation
-    if dim or min_dist is not None:
-        try:
-            _apply_scaling(structure, dim, min_dist)
-            if dim:
-                log.append(f"Applied scaling: {dim}")
-            else:
-                log.append(f"Applied min-dist scaling (>= {min_dist} A)")
-        except Exception as e:
-            return f"Error applying scaling: {str(e)}"
-
-    # 4. Substitutions/defects
-    sub_list: List[str] = _normalize_rules(substitute)
-    if sub_list:
-        try:
-            apply_substitutions(structure, sub_list)
-            log.append(f"Applied substitutions: {sub_list}")
-        except Exception as e:
-            return f"Error applying substitutions: {str(e)}"
-
-    vac_idx_list: List[str] = _normalize_rules(vacancy_index)
-    if vac_idx_list:
-        try:
-            apply_vacancies_by_index(structure, vac_idx_list)
-            log.append(f"Applied vacancy index rules: {vac_idx_list}")
-        except Exception as e:
-            return f"Error applying vacancy index: {str(e)}"
-
-    vac_cnt_list: List[str] = _normalize_rules(vacancy_count)
-    if vac_cnt_list:
-        try:
-            apply_vacancies_by_count(structure, vac_cnt_list)
-            log.append(f"Applied vacancy count rules: {vac_cnt_list}")
-        except Exception as e:
-            return f"Error applying vacancy count: {str(e)}"
-
-    # 5. Slab generation
-    if slab:
-        if thick is None or vacuum is None:
-            return (
-                "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
-            )
-        try:
-            miller_indices: List[int] = [
-                int(x) for x in re.split(r"[\s,;]+", slab.strip()) if x
-            ]
-            if len(miller_indices) != 3:
-                return f"Error: Miller indices must contain exactly 3 integers, got {miller_indices}"
-            structure = generate_surface_slab(structure, miller_indices, thick, vacuum)
-            log.append(f"Generated slab model for Miller indices: {miller_indices}")
-        except Exception as e:
-            return f"Error generating slab: {str(e)}"
+    # Execute modeling pipeline
+    try:
+        structure, pipeline_log = run_cellify_pipeline(
+            structure,
+            conventional=conventional,
+            dim=dim,
+            min_dist=min_dist,
+            substitute=substitute,
+            vacancy_index=vacancy_index,
+            vacancy_count=vacancy_count,
+            slab=slab,
+            thick=thick,
+            vacuum=vacuum,
+        )
+        if pipeline_log:
+            log.append(pipeline_log.strip())
+    except Exception as e:
+        return f"Error processing structure: {str(e)}"
 
     # Summary of final structure
-    log.append(_get_structure_summary_str(structure, label="Final structure summary:"))
+    log.append(get_structure_summary(structure, label="Final structure summary:"))
 
     if show_indices:
-        log.append(_get_atomic_indices_str(structure))
+        log.append(get_atomic_indices_table(structure))
 
     # Output handling
     if output_path:

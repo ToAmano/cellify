@@ -8,19 +8,12 @@ import os
 import sys
 from typing import Any, Dict, List, Optional, cast
 
-import numpy as np
-from pymatgen.core import Structure
-
 from cellify import __version__
 from cellify.core import (
-    apply_substitutions,
-    apply_vacancies_by_count,
-    apply_vacancies_by_index,
-    calculate_min_dist_scaling,
-    convert_to_conventional,
-    generate_surface_slab,
+    get_atomic_indices_table,
+    get_structure_summary,
     load_structure_file,
-    parse_matrix_string,
+    run_cellify_pipeline,
     save_structure_file,
 )
 
@@ -145,117 +138,6 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def _print_structure_summary(structure: Structure, label: str = "") -> None:
-    """
-    Prints a formatted summary of the structure.
-    """
-    if label:
-        print(f"\n{label}")
-    print(f"  Formula: {structure.composition.reduced_formula}")
-    print(f"  Volume:  {structure.volume:.3f} A^3")
-    print(f"  Number of atoms: {len(structure)}")
-    if label:
-        print("  Lattice constants:")
-        print(
-            f"    a = {structure.lattice.a:.4f} A, b = {structure.lattice.b:.4f} A, c = {structure.lattice.c:.4f} A"
-        )
-        print(
-            f"    alpha = {structure.lattice.alpha:.2f} deg, beta = {structure.lattice.beta:.2f} deg, gamma = {structure.lattice.gamma:.2f} deg"
-        )
-
-
-def _print_atomic_indices(structure: Structure) -> None:
-    """
-    Prints a formatted table of all atomic indices and coordinates.
-    """
-    print("\nAbsolute Atomic Indices & Coordinates:")
-    print("-" * 78)
-    header = (
-        f"{'Index':<6} {'Element':<8} "
-        f"{'Fractional Coordinates (a, b, c)':<36} "
-        f"{'Cartesian (x, y, z)':<22}"
-    )
-    print(header)
-    print("-" * 78)
-    for idx, site in enumerate(structure):
-        frac = (
-            f"[{site.frac_coords[0]:.4f}, "
-            f"{site.frac_coords[1]:.4f}, "
-            f"{site.frac_coords[2]:.4f}]"
-        )
-        cart = (
-            f"[{site.coords[0]:.3f}, "
-            f"{site.coords[1]:.3f}, "
-            f"{site.coords[2]:.3f}]"
-        )
-        print(f"{idx:<6} {site.species_string:<8} {frac:<36} {cart:<22}")
-    print("-" * 78)
-    print(f"Total: {len(structure)} atoms ({structure.composition.formula})")
-
-
-def _apply_supercell(structure: Structure, args: argparse.Namespace) -> None:
-    """
-    Applies supercell generation options to the structure.
-    """
-    if args.dim:
-        print(f"Generating supercell with diagonal scaling: {args.dim}")
-        structure.make_supercell(args.dim)
-    elif args.matrix:
-        try:
-            matrix: np.ndarray = parse_matrix_string(args.matrix)
-            print(f"Generating supercell with matrix:\n{matrix}")
-            structure.make_supercell(matrix)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error parsing matrix: {e}", file=sys.stderr)
-            sys.exit(1)
-    elif args.min_dist:
-        nx, ny, nz = calculate_min_dist_scaling(structure, args.min_dist)
-        print(
-            f"Calculated scaling for minimum distance >= {args.min_dist} A: [{nx}, {ny}, {nz}]"
-        )
-        structure.make_supercell([nx, ny, nz])
-
-
-def _apply_defects_and_slab(
-    structure: Structure, args: argparse.Namespace
-) -> Structure:
-    """
-    Applies substitutions, vacancies, and surface slab options to the structure.
-    """
-    if args.substitute:
-        try:
-            apply_substitutions(structure, args.substitute)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error applying substitutions: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    if args.vacancy_index:
-        try:
-            apply_vacancies_by_index(structure, args.vacancy_index)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error applying vacancy index: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    if args.vacancy_count:
-        try:
-            apply_vacancies_by_count(structure, args.vacancy_count)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error applying vacancy count: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    if args.slab:
-        print(f"Generating slab model for Miller indices: {args.slab}")
-        try:
-            structure = generate_surface_slab(
-                structure, args.slab, args.thick, args.vacuum
-            )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error generating slab: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    return structure
-
-
 def _determine_output_path(args: argparse.Namespace) -> str:
     """
     Determines the output file path.
@@ -311,7 +193,7 @@ def _process_template_and_validation(
     return meta_data
 
 
-def main() -> None:
+def main() -> None:  # noqa: C901,CCR001
     """
     Main entry point for the cellify CLI utility.
     """
@@ -328,27 +210,36 @@ def main() -> None:
         print(f"Error loading file: {e}", file=sys.stderr)
         sys.exit(1)
 
-    _print_structure_summary(structure)
+    print(get_structure_summary(structure))
 
     output_path: str = _determine_output_path(args)
     meta_data = _process_template_and_validation(args, meta_data, output_path)
 
-    # 0. Conventional cell conversion
-    if args.conventional:
-        print("Converting structure to standard conventional cell...")
-        structure = convert_to_conventional(structure)
-
-    # 1. Supercell generation
-    _apply_supercell(structure, args)
-
-    # 2. Defect and slab modifications
-    structure = _apply_defects_and_slab(structure, args)
+    # Execute modeling pipeline
+    try:
+        structure, pipeline_log = run_cellify_pipeline(
+            structure,
+            conventional=args.conventional,
+            dim=args.dim or args.matrix,
+            min_dist=args.min_dist,
+            substitute=args.substitute,
+            vacancy_index=args.vacancy_index,
+            vacancy_count=args.vacancy_count,
+            slab=args.slab,
+            thick=args.thick,
+            vacuum=args.vacuum,
+        )
+        if pipeline_log:
+            print(pipeline_log.strip())
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error processing structure: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Print final structure summary
-    _print_structure_summary(structure, label="Final structure summary:")
+    print(get_structure_summary(structure, label="Final structure summary:"))
 
     if args.show_indices:
-        _print_atomic_indices(structure)
+        print(get_atomic_indices_table(structure))
 
     print(f"\nSaving final structure to: {output_path}")
     try:

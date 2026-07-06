@@ -4,6 +4,8 @@ Handles structure loading, supercell generation, substitutions,
 vacancies, slab generation, and file saving using pymatgen and ASE.
 """
 
+import contextlib
+import io
 import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
@@ -298,3 +300,139 @@ def generate_surface_slab(
     # Adopt the first generated slab model (often the most symmetric and stable one)
     slab = slabs[0]
     return slab
+
+
+def get_structure_summary(structure: Structure, label: str = "") -> str:
+    """
+    Returns a formatted summary string of the structure.
+    """
+    lines: List[str] = []
+    if label:
+        lines.append(label)
+    lines.append(f"  Formula: {structure.composition.reduced_formula}")
+    lines.append(f"  Volume:  {structure.volume:.3f} A^3")
+    lines.append(f"  Number of atoms: {len(structure)}")
+    if label:
+        lines.append("  Lattice constants:")
+        lines.append(
+            f"    a = {structure.lattice.a:.4f} A, b = {structure.lattice.b:.4f} A, c = {structure.lattice.c:.4f} A"
+        )
+        lines.append(
+            f"    alpha = {structure.lattice.alpha:.2f} deg, beta = {structure.lattice.beta:.2f} deg, gamma = {structure.lattice.gamma:.2f} deg"
+        )
+    return "\n".join(lines)
+
+
+def get_atomic_indices_table(structure: Structure) -> str:
+    """
+    Returns a formatted table string of all atomic indices and coordinates.
+    """
+    lines: List[str] = []
+    lines.append("\nAbsolute Atomic Indices & Coordinates:")
+    lines.append("-" * 78)
+    header: str = (
+        f"{'Index':<6} {'Element':<8} "
+        f"{'Fractional Coordinates (a, b, c)':<36} "
+        f"{'Cartesian (x, y, z)':<22}"
+    )
+    lines.append(header)
+    lines.append("-" * 78)
+    for idx, site in enumerate(structure):
+        frac: str = (
+            f"[{site.frac_coords[0]:.4f}, "
+            f"{site.frac_coords[1]:.4f}, "
+            f"{site.frac_coords[2]:.4f}]"
+        )
+        cart: str = (
+            f"[{site.coords[0]:.3f}, "
+            f"{site.coords[1]:.3f}, "
+            f"{site.coords[2]:.3f}]"
+        )
+        lines.append(f"{idx:<6} {site.species_string:<8} {frac:<36} {cart:<22}")
+    lines.append("-" * 78)
+    lines.append(f"Total: {len(structure)} atoms ({structure.composition.formula})")
+    return "\n".join(lines)
+
+
+def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments
+    structure: Structure,
+    conventional: bool = False,
+    dim: Optional[Any] = None,
+    min_dist: Optional[float] = None,
+    substitute: Optional[List[str]] = None,
+    vacancy_index: Optional[List[str]] = None,
+    vacancy_count: Optional[List[str]] = None,
+    slab: Optional[Any] = None,
+    thick: Optional[float] = None,
+    vacuum: Optional[float] = None,
+) -> Tuple[Structure, str]:
+    """
+    Runs the entire modeling pipeline on the structure, capturing all console
+    outputs and returning the final structure along with the captured log string.
+    """
+    log_stream: io.StringIO = io.StringIO()
+    with contextlib.redirect_stdout(log_stream):
+        # 1. Conventional cell conversion
+        if conventional:
+            print("Converting structure to standard conventional cell...")
+            structure = convert_to_conventional(structure)
+
+        # 2. Supercell generation
+        if dim or min_dist is not None:
+            if dim:
+                if isinstance(dim, list):
+                    print(f"Generating supercell with diagonal scaling: {dim}")
+                    structure.make_supercell(dim)
+                else:
+                    clean_dim: str = str(dim).strip()
+                    if "," in clean_dim or "/" in clean_dim or ";" in clean_dim:
+                        matrix: np.ndarray = parse_matrix_string(clean_dim)
+                        print(f"Generating supercell with matrix:\n{matrix}")
+                        structure.make_supercell(matrix)
+                    else:
+                        factors: List[int] = [
+                            int(x) for x in re.split(r"[\s,]+", clean_dim) if x
+                        ]
+                        if len(factors) != 3:
+                            raise ValueError(
+                                f"Diagonal scaling 'dim' must contain exactly 3 integers, got {factors}"
+                            )
+                        print(f"Generating supercell with diagonal scaling: {factors}")
+                        structure.make_supercell(factors)
+            elif min_dist is not None:
+                nx: int
+                ny: int
+                nz: int
+                nx, ny, nz = calculate_min_dist_scaling(structure, min_dist)
+                print(
+                    f"Calculated scaling for minimum distance >= {min_dist} A: [{nx}, {ny}, {nz}]"
+                )
+                structure.make_supercell([nx, ny, nz])
+
+        # 3. Substitutions
+        if substitute:
+            apply_substitutions(structure, substitute)
+
+        # 4. Vacancy index
+        if vacancy_index:
+            apply_vacancies_by_index(structure, vacancy_index)
+
+        # 5. Vacancy count
+        if vacancy_count:
+            apply_vacancies_by_count(structure, vacancy_count)
+
+        # 6. Slab generation
+        if slab:
+            if isinstance(slab, (list, tuple)):
+                miller_indices: List[int] = [int(x) for x in slab]
+            else:
+                clean_slab: str = str(slab).strip()
+                miller_indices = [int(x) for x in re.split(r"[\s,;]+", clean_slab) if x]
+            if len(miller_indices) != 3:
+                raise ValueError(
+                    f"Miller indices must contain exactly 3 integers, got {miller_indices}"
+                )
+            print(f"Generating slab model for Miller indices: {miller_indices}")
+            structure = generate_surface_slab(structure, miller_indices, thick, vacuum)
+
+    return structure, log_stream.getvalue()

@@ -67,7 +67,7 @@ def test_mcp_supercell(poscar_path: str, tmp_path: pytest.TempPathFactory) -> No
     # Diagonal scaling output path
     out_file_diag = os.path.join(tmp_path, "POSCAR_super_diag")
     res_msg_diag: str = cellify(poscar_path, dim="2 2 2", output_path=out_file_diag)
-    assert "Applied scaling: 2 2 2" in res_msg_diag
+    assert "diagonal scaling" in res_msg_diag
     assert "Number of atoms: 16" in res_msg_diag
     assert os.path.exists(out_file_diag)
 
@@ -76,14 +76,14 @@ def test_mcp_supercell(poscar_path: str, tmp_path: pytest.TempPathFactory) -> No
     res_msg_mat: str = cellify(
         poscar_path, dim="2 0 0 / 0 2 0 / 0 0 2", output_path=out_file_mat
     )
-    assert "Applied scaling: 2 0 0 / 0 2 0 / 0 0 2" in res_msg_mat
+    assert "with matrix" in res_msg_mat
     assert "Number of atoms: 16" in res_msg_mat
     assert os.path.exists(out_file_mat)
 
     # min_dist scaling output path
     out_file_dist = os.path.join(tmp_path, "POSCAR_super_dist")
     res_msg_dist: str = cellify(poscar_path, min_dist=12.0, output_path=out_file_dist)
-    assert "Applied min-dist scaling" in res_msg_dist
+    assert "minimum distance" in res_msg_dist
     assert os.path.exists(out_file_dist)
 
 
@@ -100,8 +100,8 @@ def test_mcp_defect(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
         dim="2 2 2",
         output_path=out_file,
     )
-    assert "Applied substitutions" in res_msg
-    assert "Applied vacancy index rules" in res_msg
+    assert "Replaced site 0" in res_msg
+    assert "Removed site 1" in res_msg
     assert "Number of atoms: 15" in res_msg
     assert os.path.exists(out_file)
 
@@ -119,7 +119,7 @@ def test_mcp_slab(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
     res_msg: str = cellify(
         poscar_path, slab="1 1 1", thick=4.0, vacuum=10.0, output_path=out_file
     )
-    assert "Generated slab model for Miller indices" in res_msg
+    assert "Generating slab model for Miller indices" in res_msg
     assert os.path.exists(out_file)
 
 
