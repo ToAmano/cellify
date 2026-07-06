@@ -7,6 +7,7 @@ vacancies, slab generation, and file saving using pymatgen and ASE.
 import contextlib
 import io
 import math
+import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,6 +35,54 @@ def save_structure_file(
     """
     adapter: BaseAdapter = get_adapter(filepath)
     adapter.write(filepath, structure, meta_data)
+
+
+def determine_output_path(input_path: str, output_path: Optional[str] = None) -> str:
+    """
+    Determines the output file path.
+    """
+    if output_path:
+        return output_path
+
+    base, ext = os.path.splitext(input_path)
+    # Special case: VASP files like POSCAR or CONTCAR with no extension
+    if not ext and os.path.basename(base) in ["POSCAR", "CONTCAR"]:
+        return f"{base}_supercell"
+    return f"{base}_supercell{ext}"
+
+
+def process_template_and_validation(
+    meta_data: Dict[str, Any],
+    output_path: Optional[str],
+    template_path: Optional[str] = None,
+    calc: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Handles template loading, calculation overrides, and QE I/O format validations.
+    """
+    if template_path:
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template file '{template_path}' not found.")
+        _, template_meta = load_structure_file(template_path)
+        meta_data = template_meta
+
+    if calc:
+        meta_data["calculation"] = calc
+
+    if output_path:
+        is_input_qe_output = meta_data.get("mode") == "espresso_out"
+        lower_out_path = output_path.lower()
+        is_output_qe_input = (
+            any(lower_out_path.endswith(ext) for ext in [".in", ".qe", ".pwi"])
+            or "qe" in lower_out_path
+            or "espresso" in lower_out_path
+        )
+        if is_input_qe_output and is_output_qe_input and not template_path:
+            raise ValueError(
+                "A template QE input file must be specified when reading from a QE output log file and writing to a QE input file."
+            )
+
+    return meta_data
 
 
 def convert_to_conventional(structure: Structure) -> Structure:

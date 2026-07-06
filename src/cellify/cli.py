@@ -6,13 +6,15 @@ Handles arg parsing, workflow orchestration, and user output reporting.
 import argparse
 import os
 import sys
-from typing import Any, Dict, List, Optional, cast
+from typing import List, Optional
 
 from cellify import __version__
 from cellify.core import (
+    determine_output_path,
     get_atomic_indices_table,
     get_structure_summary,
     load_structure_file,
+    process_template_and_validation,
     run_cellify_pipeline,
     save_structure_file,
 )
@@ -138,61 +140,6 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
-def _determine_output_path(args: argparse.Namespace) -> str:
-    """
-    Determines the output file path.
-    """
-    if args.output:
-        return cast(str, args.output)
-
-    base, ext = os.path.splitext(args.input)
-    # Special case: VASP files like POSCAR or CONTCAR with no extension
-    if not ext and os.path.basename(base) in ["POSCAR", "CONTCAR"]:
-        return f"{base}_supercell"
-    return f"{base}_supercell{ext}"
-
-
-def _process_template_and_validation(
-    args: argparse.Namespace, meta_data: Dict[str, Any], output_path: str
-) -> Dict[str, Any]:
-    """
-    Handles template loading, calculation overrides, and QE I/O format validations.
-    """
-    if args.template:
-        if not os.path.exists(args.template):
-            print(f"Error: Template file '{args.template}' not found.", file=sys.stderr)
-            sys.exit(1)
-        print(f"Loading calculation parameters template from: {args.template}")
-        try:
-            _, template_meta = load_structure_file(args.template)
-            # Retain the original file content/formatting from the template
-            meta_data = template_meta
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error loading template file: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    if args.calc:
-        meta_data["calculation"] = args.calc
-
-    # Validate output format if reading from QE output log
-    is_input_qe_output = meta_data.get("mode") == "espresso_out"
-    lower_out_path = output_path.lower()
-    is_output_qe_input = (
-        any(lower_out_path.endswith(ext) for ext in [".in", ".qe", ".pwi"])
-        or "qe" in lower_out_path
-        or "espresso" in lower_out_path
-    )
-
-    if is_input_qe_output and is_output_qe_input and not args.template:
-        print(
-            "Error: A template QE input file must be specified via --template when reading from a QE output log file.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    return meta_data
-
-
 def main() -> None:  # noqa: C901,CCR001
     """
     Main entry point for the cellify CLI utility.
@@ -212,8 +159,14 @@ def main() -> None:  # noqa: C901,CCR001
 
     print(get_structure_summary(structure))
 
-    output_path: str = _determine_output_path(args)
-    meta_data = _process_template_and_validation(args, meta_data, output_path)
+    output_path: str = determine_output_path(args.input, args.output)
+    try:
+        meta_data = process_template_and_validation(
+            meta_data, output_path, args.template, args.calc
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Execute modeling pipeline
     try:

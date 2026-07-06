@@ -12,9 +12,11 @@ from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error
 from pymatgen.core import Structure
 
 from cellify.core import (
+    determine_output_path,
     get_atomic_indices_table,
     get_structure_summary,
     load_structure_file,
+    process_template_and_validation,
     run_cellify_pipeline,
     save_structure_file,
 )
@@ -108,19 +110,15 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
 
     log.append(get_structure_summary(structure))
 
-    # 1. Template & calculation override handling
-    if template:
-        if not os.path.exists(template):
-            return f"Error: Template file '{template}' not found."
-        try:
-            template_meta: Dict[str, Any]
-            _, template_meta = load_structure_file(template)
-            meta_data = template_meta
-        except Exception as e:
-            return f"Error loading template file: {str(e)}"
-
-    if calc:
-        meta_data["calculation"] = calc
+    # 1. Template & calculation validation/processing
+    try:
+        # Determine output path for validation checks
+        validation_output_path = determine_output_path(input_path, output_path)
+        meta_data = process_template_and_validation(
+            meta_data, validation_output_path, template, calc
+        )
+    except Exception as e:
+        return f"Error: {str(e)}"
 
     if slab and (thick is None or vacuum is None):
         return "Error: Both 'thick' and 'vacuum' must be specified when 'slab' is set."
