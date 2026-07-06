@@ -35,7 +35,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           if [ "${{ matrix.python-version }}" = "3.9" ]; then
-            pytest --cov=src/ --cov-report=xml --cov-omit="src/cellify/mcp.py"
+            pytest --cov=src/ --cov-report=xml --cov-config=.coveragerc_39
           else
             pytest --cov=src/ --cov-report=xml
           fi
