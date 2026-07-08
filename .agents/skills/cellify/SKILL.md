@@ -96,3 +96,25 @@ cellify -i POSCAR --conventional -s 2 2 2 --show-indices
 # 2. Re-run to delete Si at index 0 and C at index 32
 cellify -i POSCAR --conventional -s 2 2 2 -v Si:0 -v C:32 -o POSCAR_divacancy
 ```
+
+---
+
+## 5. MCP Server Tool Reference
+
+`cellify` exposes a FastMCP tool named `cellify` for agentic use.
+
+### Arguments:
+- `input_path` (string): Path to input file or chemical formula.
+- `output_path` (string, optional): Output filepath.
+- `select` (integer, optional): 1-based index to select a candidate structure non-interactively when querying by formula.
+- `conventional` (boolean): Conventionalize unit cell first.
+- `dim` (array of integers, optional): Diagonal supercell dimension (e.g., `[2, 2, 2]`).
+- `matrix` (string, optional): Scaling matrix.
+- `min_dist` (number, optional): Minimum periodic distance target.
+- `substitute` (array of strings, optional): Doping/substitution rules.
+- `vacancy_index` (array of strings, optional): Vacancy by index rules.
+- `vacancy_count` (array of strings, optional): Vacancy by count rules.
+- `slab` (array of integers, optional): Slab Miller indices (e.g. `[1, 1, 1]`).
+- `thick` (number, optional): Slab thickness.
+- `vacuum` (number, optional): Vacuum size.
+- `show_indices` (boolean): Show index mapping.

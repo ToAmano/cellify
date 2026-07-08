@@ -254,7 +254,7 @@ Go to **Settings** > **Features** > **MCP** and add a new MCP server:
 - **Command**: `cellify-mcp`
 
 ### 3. Exposed Tools
-- `cellify`: All-in-one crystal structure modeling tool. Exposes complete parameters for conventional cell conversion, scaling (diagonal dimensions, transformation matrix, or minimum periodic distance), defect generation (vacancies and substitutions), and surface slab cutting in a single, structured tool call.
+- `cellify`: All-in-one crystal structure modeling tool. Exposes complete parameters for conventional cell conversion, scaling (diagonal dimensions, transformation matrix, or minimum periodic distance), defect generation (vacancies and substitutions), surface slab cutting, and structure selection by index when querying databases by formula in a single, structured tool call.
 
 ## AI & Agentic Integration
 

@@ -249,3 +249,63 @@ def test_mcp_process_error(poscar_path: str) -> None:
     with patch("cellify.mcp.run_cellify_pipeline", side_effect=RuntimeError("Process error")):
         res: str = cellify(poscar_path)
         assert "Error processing structure: Process error" in res
+
+
+def test_mcp_formula_query_with_select(tmp_path: pytest.TempPathFactory) -> None:
+    """
+    Tests the cellify tool formula query fallback with --select.
+    """
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {
+                        "gga_gga+u": {"energy_above_hull": 0.0}
+                    },
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+    mock_cod_response = {
+        "data": []
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self.json_data
+
+        if "materialsproject.org" in url:
+            return MockResponse(mock_mp_response, 200)
+        if "crystallography.net" in url:
+            return MockResponse(mock_cod_response, 200)
+        return MockResponse({}, 404)
+
+    # Output file path
+    out_file = os.path.join(tmp_path, "POSCAR_select")
+
+    with patch("requests.get", side_effect=mock_get):
+        # 1. Valid select (1)
+        res: str = cellify("Si", select=1, output_path=out_file)
+        assert "Downloading structure from Materials Project (ID: mp-165)..." in res
+        assert "Saving final structure to" in res
+        assert os.path.exists(out_file)
+
+        # 2. Out of range select (99)
+        res_err: str = cellify("Si", select=99)
+        assert "Error: Selection index 99 is out of range." in res_err
+
+    # 3. Download exception
+    with patch("requests.get", side_effect=mock_get), \
+         patch("cellify.optimade.download_structure_from_entry", side_effect=RuntimeError("Download failed")):
+        res_dl_err: str = cellify("Si", select=1)
+        assert "Error downloading structure: Download failed" in res_dl_err
