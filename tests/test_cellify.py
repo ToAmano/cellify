@@ -404,6 +404,13 @@ def test_cli_main_formula_query(capsys):
                     "_cod_c": "invalid-c",
                 },
             },
+            {
+                "id": "1526657",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_cod_chemname": "Silicon Chem",
+                },
+            },
         ]
     }
 
@@ -443,7 +450,7 @@ def test_cli_main_formula_query(capsys):
     assert "mp-1000" in captured.out
     assert "0.0500 eV/atom" in captured.out
     assert "Querying Crystallography Open Database (COD) OPTIMADE" in captured.out
-    assert "Found 2 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Found 3 structures in Crystallography Open Database (COD)" in captured.out
     assert "1526655" in captured.out
     assert "Space Group: F d -3 m :1" in captured.out
     assert "Volume: 160.00 A^3" in captured.out

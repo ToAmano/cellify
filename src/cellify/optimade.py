@@ -3,7 +3,7 @@ OPTIMADE API client and query handlers for cellify.
 Allows querying materials databases by chemical formula.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests  # type: ignore[import-untyped]
 from pymatgen.core import Composition, Structure
@@ -119,6 +119,39 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
     return " | ".join(info_parts)
 
 
+def _sort_materials_project_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Sorts Materials Project entries by thermodynamic stability."""
+
+    def get_sort_key(entry: Dict[str, Any]) -> float:
+        attrs = entry.get("attributes", {})
+        val = _extract_energy_above_hull(attrs)
+        if isinstance(val, (int, float)):
+            return float(val)
+        return float("inf")
+
+    return sorted(data, key=get_sort_key)
+
+
+def _sort_cod_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Sorts COD entries to prioritize named structures."""
+
+    def get_cod_sort_key(entry: Dict[str, Any]) -> Tuple[int, int]:
+        attrs = entry.get("attributes", {})
+        if attrs.get("_cod_commonname"):
+            priority = 0
+        elif attrs.get("_cod_mineral") or attrs.get("_cod_chemname"):
+            priority = 1
+        else:
+            priority = 2
+        try:
+            entry_id = int(entry.get("id") or 0)
+        except ValueError:
+            entry_id = 0
+        return (priority, entry_id)
+
+    return sorted(data, key=get_cod_sort_key)
+
+
 def _query_single_database(
     db_name: str, base_url: str, formula: str, hill_formula: str
 ) -> str:
@@ -128,7 +161,7 @@ def _query_single_database(
         if db_name == "Materials Project":
             url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22&page_limit=100"
         else:
-            url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
+            url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=100"
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
             out.append(f"{db_name} returned status code: {r.status_code}")
@@ -136,17 +169,9 @@ def _query_single_database(
 
         data = r.json().get("data", [])
         if db_name == "Materials Project":
-            # We sort Materials Project structures by thermodynamic stability (energy_above_hull)
-            # in ascending order. This guarantees that the most stable ground-state phases
-            # are positioned at the beginning of the list and not sliced out by the top 5 limit.
-            def get_sort_key(entry: Dict[str, Any]) -> float:
-                attrs = entry.get("attributes", {})
-                val = _extract_energy_above_hull(attrs)
-                if isinstance(val, (int, float)):
-                    return float(val)
-                return float("inf")
-
-            data = sorted(data, key=get_sort_key)
+            data = _sort_materials_project_data(data)
+        elif db_name == "Crystallography Open Database (COD)":
+            data = _sort_cod_data(data)
 
         out.append(f"Found {len(data)} structures in {db_name}:")
         for idx, entry in enumerate(data[:5]):
