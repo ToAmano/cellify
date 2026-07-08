@@ -27,6 +27,7 @@ cellify -i <INPUT_FILE_OR_FORMULA> [OPTIONS] -o <OUTPUT_FILE>
 
 ### Main Options
 - `-i, --input PATH_OR_FORMULA`: Path to the input structure file (formats: VASP `POSCAR`/`CONTCAR`, `*.cif`, or Quantum ESPRESSO `*.in`). If the file does not exist, it is interpreted as a chemical formula (e.g. `Si`, `TiO2`, `H3S`), and `cellify` queries public OPTIMADE servers to search and display available crystal structures.
+- `--select INDEX`: 1-based index to select a structure from query results non-interactively (when `-i`/`--input` is a chemical formula).
 - `-o, --output PATH`: Path to write the output structure file (format auto-detected by extension/filename).
 - `-w, --view`: Opens the 3D WebGL viewer in your default browser.
 - `--show-indices`: Dumps a neat table of absolute 0-based atomic indices, elements, fractional, and Cartesian coordinates to stdout, then exits.
@@ -71,9 +72,10 @@ When working with Quantum ESPRESSO `*.in` files:
 
 ## 4. Practical Examples
 
-### Example 1: Search Crystal Structure Candidates by Chemical Formula
+### Example 1: Search and Download Crystal Structure Candidates by Chemical Formula
 ```bash
-cellify -i TiO2
+# Non-interactively select the 1st structure from the query results for TiO2 and save it
+cellify -i TiO2 --select 1 -o TiO2_entry.cif
 ```
 
 ### Example 2: Create a 2x2x2 Supercell of Silicon

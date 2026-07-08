@@ -52,7 +52,8 @@ cellify -i <input_file> -o <output_file> [options]
 ```
 
 ### Arguments List
-- `-i`, `--input` : Input structure file path (Required).
+- `-i`, `--input` : Input structure file path or chemical formula (Required).
+- `--select` : 1-based index to select a structure from query results non-interactively (when `--input` is specified as a chemical formula).
 - `-o`, `--output` : Output structure file path (Default: `<input_base>_supercell.<ext>`).
 - `-d`, `--dim` : Diagonal scaling factors. 3 integers separated by spaces (e.g., `--dim 2 2 2`).
 - `-m`, `--matrix` : $3 \times 3$ transformation matrix. Specify row values separated by spaces, rows separated by slashes/commas/semicolons (e.g., `--matrix "1 -1 0 / 1 1 0 / 0 0 2"`).
@@ -189,6 +190,12 @@ graph TD
 
     style C fill:#238636,color:#fff,stroke:#2ea44f,stroke-width:2px;
     style D fill:#1f6feb,color:#fff,stroke:#58a6ff,stroke-width:2px;
+```
+
+### 9. Query and download a structure by chemical formula (and convert to conventional cell)
+```bash
+# Non-interactively select index 1 (usually the stable diamond phase of Si) and convert it
+cellify -i Si --select 1 -o Si_conventional.cif --conventional
 ```
 
 For more hands-on examples, check out the `examples/` directory.

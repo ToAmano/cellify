@@ -336,7 +336,7 @@ def test_cli_main_missing_file():
         assert excinfo.value.code == 1
 
 
-def test_cli_main_formula_query(capsys):
+def test_cli_main_formula_query(capsys, tmp_path):
     mock_mp_response = {
         "data": [
             {
@@ -443,13 +443,12 @@ def test_cli_main_formula_query(capsys):
             return MockResponse(mock_cod_response, 200)
         return MockResponse({}, 404)
 
+    out_file = str(tmp_path / "Si_supercell.cif")
     with patch("requests.get", side_effect=mock_get):
-        test_args = ["cellify", "-i", "Si"]
+        test_args = ["cellify", "-i", "Si", "--select", "1", "-o", out_file]
         with patch("sys.argv", test_args):
             from cellify.cli import main
-            with pytest.raises(SystemExit) as excinfo:
-                main()
-            assert excinfo.value.code == 0
+            main()
 
     captured = capsys.readouterr()
     assert "Found 6 structures in Materials Project" in captured.out
@@ -475,7 +474,7 @@ def test_cli_main_formula_query(capsys):
     assert "Lattice: a=invalid-a, b=invalid-b, c=invalid-c A" in captured.out
 
 
-def test_cli_main_formula_query_sg_error(capsys):
+def test_cli_main_formula_query_sg_error(capsys, tmp_path):
     mock_mp_response = {
         "data": [
             {
@@ -502,14 +501,13 @@ def test_cli_main_formula_query_sg_error(capsys):
 
         return MockResponse(mock_mp_response, 200)
 
+    out_file = str(tmp_path / "Si_supercell.cif")
     with patch("requests.get", side_effect=mock_get):
         with patch("cellify.optimade.SpacegroupAnalyzer", side_effect=RuntimeError("spglib error")):
-            test_args = ["cellify", "-i", "Si"]
+            test_args = ["cellify", "-i", "Si", "--select", "1", "-o", out_file]
             with patch("sys.argv", test_args):
                 from cellify.cli import main
-                with pytest.raises(SystemExit) as excinfo:
-                    main()
-                assert excinfo.value.code == 0
+                main()
 
     captured = capsys.readouterr()
     assert "Querying Materials Project OPTIMADE" in captured.out
@@ -534,11 +532,12 @@ def test_cli_main_formula_query_status_non_200(capsys):
             from cellify.cli import main
             with pytest.raises(SystemExit) as excinfo:
                 main()
-            assert excinfo.value.code == 0
+            assert excinfo.value.code == 1
 
     captured = capsys.readouterr()
-    assert "Materials Project returned status code: 500" in captured.out
-    assert "Crystallography Open Database (COD) returned status code: 500" in captured.out
+    assert "Found 0 structures in Materials Project" in captured.out
+    assert "Found 0 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Error: No structures found for formula 'Si'." in captured.err
 
 
 def test_cli_main_formula_query_error(capsys):
@@ -551,11 +550,12 @@ def test_cli_main_formula_query_error(capsys):
             from cellify.cli import main
             with pytest.raises(SystemExit) as excinfo:
                 main()
-            assert excinfo.value.code == 0
+            assert excinfo.value.code == 1
 
     captured = capsys.readouterr()
-    assert "Error querying Materials Project: Connection timed out" in captured.out
-    assert "Error querying Crystallography Open Database (COD): Connection timed out" in captured.out
+    assert "Found 0 structures in Materials Project" in captured.out
+    assert "Found 0 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Error: No structures found for formula 'Si'." in captured.err
 
 
 def test_cli_main_formula_query_invalid_formula(capsys):
@@ -568,10 +568,12 @@ def test_cli_main_formula_query_invalid_formula(capsys):
             from cellify.cli import main
             with pytest.raises(SystemExit) as excinfo:
                 main()
-            assert excinfo.value.code == 0
+            assert excinfo.value.code == 1
 
     captured = capsys.readouterr()
-    assert "Error querying Materials Project: early exit" in captured.out
+    assert "Found 0 structures in Materials Project" in captured.out
+    assert "Found 0 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Error: No structures found for formula 'invalid-formula-123!'." in captured.err
 
 
 def test_cli_main_invalid_matrix(poscar_path):
@@ -1240,3 +1242,184 @@ Si 0 0 0
         import pytest
         with pytest.raises(ValueError, match="Unsupported database name: UnknownDB"):
             download_structure_from_entry("UnknownDB", mp_res[0])
+
+
+def test_cli_main_formula_query_select_out_of_range(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        test_args = ["cellify", "-i", "Si", "--select", "99"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Selection index 99 is out of range." in captured.err
+
+
+def test_cli_main_formula_query_non_interactive_no_select(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Chemical formula specified, but the session is non-interactive" in captured.err
+
+
+def test_cli_main_formula_query_interactive_select(capsys, tmp_path):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    out_file = str(tmp_path / "Si_supercell.cif")
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value="1"):
+                test_args = ["cellify", "-i", "Si", "-o", out_file]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    main()
+
+    captured = capsys.readouterr()
+    assert "Downloading structure from Materials Project (ID: mp-165)..." in captured.out
+    assert os.path.exists(out_file)
+
+
+def test_cli_main_formula_query_interactive_select_invalid(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    # test invalid choice input
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value="invalid_choice"):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err
+
+    # test out of range choice input
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value="5"):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Selection index 5 is out of range." in captured.err
+
+    # test empty choice input
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value=""):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err

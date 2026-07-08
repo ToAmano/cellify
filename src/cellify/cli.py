@@ -6,7 +6,9 @@ Handles arg parsing, workflow orchestration, and user output reporting.
 import argparse
 import os
 import sys
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+from pymatgen.core import Structure
 
 from cellify import __version__
 from cellify.core import (
@@ -37,6 +39,11 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         "--input",
         required=True,
         help="Input structure file path (e.g. POSCAR, input.cif, qe.in, qe.out)",
+    )
+    parser.add_argument(
+        "--select",
+        type=int,
+        help="1-based index to select a structure from query results (non-interactive).",
     )
     parser.add_argument(
         "-o",
@@ -146,22 +153,86 @@ def main() -> None:  # noqa: C901,CCR001
     """
     args: argparse.Namespace = parse_args()
 
+    structure: Structure
+    meta_data: Dict[str, Any]
+
     if not os.path.exists(args.input):
         if "/" not in args.input and "\\" not in args.input and "." not in args.input:
-            from cellify.optimade import retrieve_cif_by_formula
+            from cellify.optimade import (
+                download_structure_from_entry,
+                format_formula_structures,
+                query_formula_structures,
+            )
 
-            print(retrieve_cif_by_formula(args.input))
-            sys.exit(0)
+            formula = args.input
+            mp_data, cod_data = query_formula_structures(formula)
+            summary, selection_map = format_formula_structures(
+                mp_data, cod_data, formula
+            )
+            print(summary)
+
+            if not selection_map:
+                print(
+                    f"Error: No structures found for formula '{formula}'.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            if args.select is not None:
+                choice = args.select
+                if choice not in selection_map:
+                    print(
+                        f"Error: Selection index {choice} is out of range.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+            elif sys.stdin.isatty():
+                try:
+                    choice_str = input(
+                        f"Select a structure (1-{len(selection_map)}): "
+                    ).strip()
+                    if not choice_str:
+                        print("Error: Invalid selection.", file=sys.stderr)
+                        sys.exit(1)
+                    choice = int(choice_str)
+                    if choice not in selection_map:
+                        print(
+                            f"Error: Selection index {choice} is out of range.",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+                except (ValueError, KeyboardInterrupt, EOFError):
+                    print("\nError: Invalid selection.", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                print(
+                    "Error: Chemical formula specified, but the session is non-interactive "
+                    "and --select was not provided.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            db_name, entry = selection_map[choice]
+            print(f"Downloading structure from {db_name} (ID: {entry.get('id')})...")
+            try:
+                structure = download_structure_from_entry(db_name, entry)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"Error downloading structure: {e}", file=sys.stderr)
+                sys.exit(1)
+
+            entry_id = entry.get("id", "unknown")
+            args.input = f"{formula}_{entry_id}.cif"
+            meta_data = {}
         else:
             print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
             sys.exit(1)
-
-    print(f"Loading structure from: {args.input}")
-    try:
-        structure, meta_data = load_structure_file(args.input)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error loading file: {e}", file=sys.stderr)
-        sys.exit(1)
+    else:
+        print(f"Loading structure from: {args.input}")
+        try:
+            structure, meta_data = load_structure_file(args.input)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Error loading file: {e}", file=sys.stderr)
+            sys.exit(1)
 
     print(get_structure_summary(structure))
 
