@@ -375,6 +375,20 @@ def test_cli_main_formula_query(capsys):
                     "_mp_stability": "invalid-stability-type",
                 },
             },
+            {
+                "id": "mp-2000",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.10},
+                },
+            },
+            {
+                "id": "mp-3000",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.15},
+                },
+            },
         ]
     }
     mock_cod_response = {
@@ -438,8 +452,8 @@ def test_cli_main_formula_query(capsys):
             assert excinfo.value.code == 0
 
     captured = capsys.readouterr()
-    assert "Querying Materials Project OPTIMADE" in captured.out
-    assert "Found 4 structures in Materials Project" in captured.out
+    assert "Found 6 structures in Materials Project" in captured.out
+    assert "Warning: Only the top 5 most relevant structures are shown. There are 1 more structures in Materials Project." in captured.out
     assert "mp-165" in captured.out
     assert "Space Group: R-3m" in captured.out
     assert "Volume: 157.46 A^3" in captured.out

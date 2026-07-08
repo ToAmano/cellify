@@ -127,6 +127,8 @@ def _sort_materials_project_data(data: List[Dict[str, Any]]) -> List[Dict[str, A
         val = _extract_energy_above_hull(attrs)
         if isinstance(val, (int, float)):
             return float(val)
+        # Fallback to float("inf") for entries without a valid energy_above_hull
+        # to push unstable/unmeasured structures to the bottom of the list.
         return float("inf")
 
     return sorted(data, key=get_sort_key)
@@ -137,6 +139,10 @@ def _sort_cod_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     def get_cod_sort_key(entry: Dict[str, Any]) -> Tuple[int, int]:
         attrs = entry.get("attributes", {})
+        # We sort COD structures to prioritize named ones so that users get
+        # descriptive crystal names (Graphite, Diamond, Lonsdaleite) first.
+        # Priority: commonname (0) > mineral or chemname (1) > unnamed (2).
+        # Sub-sorted by ascending database ID (older, more standard entries first).
         if attrs.get("_cod_commonname"):
             priority = 0
         elif attrs.get("_cod_mineral") or attrs.get("_cod_chemname"):
@@ -176,6 +182,13 @@ def _query_single_database(
         out.append(f"Found {len(data)} structures in {db_name}:")
         for idx, entry in enumerate(data[:5]):
             out.append(_format_structure_info(idx, entry, formula))
+
+        # Print a warning/notice if the total results count exceeds the displayed limit of 5
+        if len(data) > 5:
+            out.append(
+                f"  Warning: Only the top 5 most relevant structures are shown. "
+                f"There are {len(data) - 5} more structures in {db_name}."
+            )
     except Exception as e:  # pylint: disable=broad-exception-caught
         out.append(f"Error querying {db_name}: {e}")
     return "\n".join(out)
@@ -190,6 +203,7 @@ def retrieve_cif_by_formula(formula: str) -> str:
     except Exception:  # pylint: disable=broad-exception-caught
         hill_formula = formula
 
+    # Currently we only support querying Materials Project and Crystallography Open Database (COD).
     databases = {
         "Materials Project": "https://optimade.materialsproject.org/v1/structures",
         "Crystallography Open Database (COD)": "https://www.crystallography.net/cod/optimade/v1/structures",
