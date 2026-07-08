@@ -148,7 +148,7 @@ def main() -> None:  # noqa: C901,CCR001
 
     if not os.path.exists(args.input):
         if "/" not in args.input and "\\" not in args.input and "." not in args.input:
-            from cellify.core import retrieve_cif_by_formula
+            from cellify.optimade import retrieve_cif_by_formula
 
             retrieve_cif_by_formula(args.input)
             sys.exit(0)

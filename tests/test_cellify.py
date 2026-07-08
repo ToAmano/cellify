@@ -482,7 +482,7 @@ def test_cli_main_formula_query_sg_error(capsys):
         return MockResponse(mock_mp_response, 200)
 
     with patch("requests.get", side_effect=mock_get):
-        with patch("cellify.core.SpacegroupAnalyzer", side_effect=RuntimeError("spglib error")):
+        with patch("cellify.optimade.SpacegroupAnalyzer", side_effect=RuntimeError("spglib error")):
             test_args = ["cellify", "-i", "Si"]
             with patch("sys.argv", test_args):
                 from cellify.cli import main
