@@ -1125,3 +1125,113 @@ def test_cli_show_indices(poscar_path, tmp_path, capsys):
     assert "Cartesian (x, y, z)" in captured.out
     assert "0      Si" in captured.out
     assert "Total: 2 atoms" in captured.out
+
+
+def test_granular_optimade_query_and_download():
+    # 1. Test imports
+    from cellify.optimade import (
+        query_formula_structures,
+        format_formula_structures,
+        download_structure_from_entry,
+    )
+
+    # Mock data for Materials Project (MP)
+    mock_mp_data = [
+        {
+            "id": "mp-123",
+            "attributes": {
+                "chemical_formula_descriptive": "Si",
+                "_mp_stability": {"energy_above_hull": 0.0},
+                "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                "species_at_sites": ["Si", "Si"],
+            },
+        }
+    ]
+
+    # Mock data for Crystallography Open Database (COD)
+    mock_cod_data = [
+        {
+            "id": "1000000",
+            "attributes": {
+                "chemical_formula_descriptive": "Si",
+                "_cod_sg": "Fd-3m",
+                "_cod_vol": 160.0,
+                "_cod_a": 5.43,
+                "_cod_b": 5.43,
+                "_cod_c": 5.43,
+                "_cod_commonname": "Silicon",
+            },
+        }
+    ]
+
+    # Mock requests.get
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, text_or_json, status_code):
+                self.text_or_json = text_or_json
+                self.status_code = status_code
+
+            def json(self):
+                return self.text_or_json
+
+            @property
+            def text(self):
+                return self.text_or_json
+
+        if "materialsproject.org" in url:
+            return MockResponse({"data": mock_mp_data}, 200)
+        elif "crystallography.net/cod/optimade" in url:
+            return MockResponse({"data": mock_cod_data}, 200)
+        elif "crystallography.net/cod/1000000.cif" in url:
+            # Return dummy CIF text
+            cif_text = """data_global
+_cell_length_a 5.43
+_cell_length_b 5.43
+_cell_length_c 5.43
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+_space_group_symop_operation_xyz
+'x,y,z'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si 0 0 0
+"""
+            return MockResponse(cif_text, 200)
+        return MockResponse("Not Found", 404)
+
+    with patch("requests.get", side_effect=mock_get):
+        # 2. Test query
+        mp_res, cod_res = query_formula_structures("Si")
+        assert len(mp_res) == 1
+        assert mp_res[0]["id"] == "mp-123"
+        assert len(cod_res) == 1
+        assert cod_res[0]["id"] == "1000000"
+
+        # 3. Test formatting
+        formatted_str, selection_map = format_formula_structures(mp_res, cod_res, "Si")
+        assert "Found 1 structures in Materials Project" in formatted_str
+        assert "Found 1 structures in Crystallography Open Database (COD)" in formatted_str
+        assert "[1] ID: mp-123" in formatted_str
+        assert "[2] ID: 1000000" in formatted_str
+
+        assert 1 in selection_map
+        assert selection_map[1] == ("Materials Project", mp_res[0])
+        assert 2 in selection_map
+        assert selection_map[2] == ("Crystallography Open Database (COD)", cod_res[0])
+
+        # 4. Test download structure
+        struct_mp = download_structure_from_entry("Materials Project", mp_res[0])
+        assert isinstance(struct_mp, Structure)
+        assert len(struct_mp) == 2
+        assert set(struct_mp.symbol_set) == {"Si"}
+
+        struct_cod = download_structure_from_entry("Crystallography Open Database (COD)", cod_res[0])
+        assert isinstance(struct_cod, Structure)
+        assert len(struct_cod) == 1
+        assert set(struct_cod.symbol_set) == {"Si"}

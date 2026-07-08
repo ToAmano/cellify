@@ -213,3 +213,98 @@ def retrieve_cif_by_formula(formula: str) -> str:
     for db_name, base_url in databases.items():
         results.append(_query_single_database(db_name, base_url, formula, hill_formula))
     return "\n\n".join(results)
+
+
+def query_formula_structures(
+    formula: str,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Queries OPTIMADE databases and returns the raw entries for Materials Project and COD."""
+    try:
+        hill_formula = Composition(formula).hill_formula.replace(" ", "")
+    except Exception:  # pylint: disable=broad-exception-caught
+        hill_formula = formula
+
+    mp_url = f"https://optimade.materialsproject.org/v1/structures?filter=chemical_formula_reduced=%22{hill_formula}%22&page_limit=100"
+    cod_url = f"https://www.crystallography.net/cod/optimade/v1/structures?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=100"
+
+    mp_data: List[Dict[str, Any]] = []
+    try:
+        r = requests.get(mp_url, timeout=10)
+        if r.status_code == 200:
+            mp_data = _sort_materials_project_data(r.json().get("data", []))
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    cod_data: List[Dict[str, Any]] = []
+    try:
+        r = requests.get(cod_url, timeout=10)
+        if r.status_code == 200:
+            cod_data = _sort_cod_data(r.json().get("data", []))
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    return mp_data, cod_data
+
+
+def format_formula_structures(
+    mp_data: List[Dict[str, Any]], cod_data: List[Dict[str, Any]], formula: str
+) -> Tuple[str, Dict[int, Tuple[str, Dict[str, Any]]]]:
+    """Formats the structures query results and constructs a selection mapping."""
+    out: List[str] = []
+    selection_map: Dict[int, Tuple[str, Dict[str, Any]]] = {}
+    current_idx = 1
+
+    out.append(f"Querying Materials Project OPTIMADE for '{formula}'...")
+    out.append(f"Found {len(mp_data)} structures in Materials Project:")
+    for entry in mp_data[:5]:
+        desc = _format_structure_info(current_idx - 1, entry, formula)
+        # Replace displayed index e.g. [1] with global index e.g. [current_idx]
+        desc = desc.replace(f"[{current_idx}]", f"[{current_idx}]", 1)
+        out.append(desc)
+        selection_map[current_idx] = ("Materials Project", entry)
+        current_idx += 1
+    if len(mp_data) > 5:
+        out.append(
+            f"  Warning: Only the top 5 most relevant structures are shown. "
+            f"There are {len(mp_data) - 5} more structures in Materials Project."
+        )
+
+    out.append(
+        f"\nQuerying Crystallography Open Database (COD) OPTIMADE for '{formula}'..."
+    )
+    out.append(
+        f"Found {len(cod_data)} structures in Crystallography Open Database (COD):"
+    )
+    for entry in cod_data[:5]:
+        desc = _format_structure_info(current_idx - 1, entry, formula)
+        desc = desc.replace(f"[{current_idx}]", f"[{current_idx}]", 1)
+        out.append(desc)
+        selection_map[current_idx] = ("Crystallography Open Database (COD)", entry)
+        current_idx += 1
+    if len(cod_data) > 5:
+        out.append(
+            f"  Warning: Only the top 5 most relevant structures are shown. "
+            f"There are {len(cod_data) - 5} more structures in Crystallography Open Database (COD)."
+        )
+
+    return "\n".join(out), selection_map
+
+
+def download_structure_from_entry(db_name: str, entry: Dict[str, Any]) -> Structure:
+    """Downloads and parses the crystal structure corresponding to the selection entry."""
+    if db_name == "Materials Project":
+        struct = parse_optimade_entry_to_structure(entry)
+        if struct is None:
+            raise ValueError(
+                "Failed to parse structure from Materials Project attributes."
+            )
+        return struct
+
+    entry_id = entry.get("id")
+    if not entry_id:
+        raise ValueError("COD entry has no ID.")
+    url = f"https://www.crystallography.net/cod/{entry_id}.cif"
+    r = requests.get(url, timeout=10)
+    if r.status_code != 200:
+        raise RuntimeError(f"Failed to download CIF from COD: status {r.status_code}")
+    return Structure.from_str(r.text, fmt="cif")
