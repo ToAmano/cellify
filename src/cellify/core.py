@@ -613,6 +613,40 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
     return " | ".join(info_parts)
 
 
+def _query_single_database(
+    name: str, base_url: str, formula: str, hill_formula: str
+) -> None:
+    """Helper to query a single OPTIMADE database and display sorted results."""
+    print(f"Querying {name} OPTIMADE for '{formula}'...")
+    try:
+        if name == "Materials Project":
+            url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22"
+        else:
+            url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            print(f"{name} returned status code: {r.status_code}")
+            return
+
+        data = r.json().get("data", [])
+        if name == "Materials Project":
+
+            def get_sort_key(entry: Dict[str, Any]) -> float:
+                attrs = entry.get("attributes", {})
+                val = _extract_energy_above_hull(attrs)
+                if isinstance(val, (int, float)):
+                    return float(val)
+                return float("inf")
+
+            data = sorted(data, key=get_sort_key)
+
+        print(f"Found {len(data)} structures in {name}:")
+        for idx, entry in enumerate(data[:5]):
+            print(_format_structure_info(idx, entry, formula))
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        print(f"Error querying {name}: {e}")
+
+
 def retrieve_cif_by_formula(formula: str) -> None:
     """
     Queries OPTIMADE servers for the given chemical formula and prints the results.
@@ -628,19 +662,4 @@ def retrieve_cif_by_formula(formula: str) -> None:
     }
 
     for name, base_url in databases.items():
-        print(f"Querying {name} OPTIMADE for '{formula}'...")
-        try:
-            if name == "Materials Project":
-                url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22"
-            else:
-                url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                data = r.json().get("data", [])
-                print(f"Found {len(data)} structures in {name}:")
-                for idx, entry in enumerate(data[:5]):
-                    print(_format_structure_info(idx, entry, formula))
-            else:
-                print(f"{name} returned status code: {r.status_code}")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Error querying {name}: {e}")
+        _query_single_database(name, base_url, formula, hill_formula)
