@@ -120,23 +120,25 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
 
 
 def _query_single_database(
-    name: str, base_url: str, formula: str, hill_formula: str
+    db_name: str, base_url: str, formula: str, hill_formula: str
 ) -> None:
     """Helper to query a single OPTIMADE database and display sorted results."""
-    print(f"Querying {name} OPTIMADE for '{formula}'...")
+    print(f"Querying {db_name} OPTIMADE for '{formula}'...")
     try:
-        if name == "Materials Project":
+        if db_name == "Materials Project":
             url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22"
         else:
             url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
-            print(f"{name} returned status code: {r.status_code}")
+            print(f"{db_name} returned status code: {r.status_code}")
             return
 
         data = r.json().get("data", [])
-        if name == "Materials Project":
-
+        if db_name == "Materials Project":
+            # We sort Materials Project structures by thermodynamic stability (energy_above_hull)
+            # in ascending order. This guarantees that the most stable ground-state phases
+            # are positioned at the beginning of the list and not sliced out by the top 5 limit.
             def get_sort_key(entry: Dict[str, Any]) -> float:
                 attrs = entry.get("attributes", {})
                 val = _extract_energy_above_hull(attrs)
@@ -146,11 +148,11 @@ def _query_single_database(
 
             data = sorted(data, key=get_sort_key)
 
-        print(f"Found {len(data)} structures in {name}:")
+        print(f"Found {len(data)} structures in {db_name}:")
         for idx, entry in enumerate(data[:5]):
             print(_format_structure_info(idx, entry, formula))
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error querying {name}: {e}")
+        print(f"Error querying {db_name}: {e}")
 
 
 def retrieve_cif_by_formula(formula: str) -> None:
@@ -167,5 +169,5 @@ def retrieve_cif_by_formula(formula: str) -> None:
         "Crystallography Open Database (COD)": "https://www.crystallography.net/cod/optimade/v1/structures",
     }
 
-    for name, base_url in databases.items():
-        _query_single_database(name, base_url, formula, hill_formula)
+    for db_name, base_url in databases.items():
+        _query_single_database(db_name, base_url, formula, hill_formula)
