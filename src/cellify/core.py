@@ -543,6 +543,49 @@ def _format_cod_fallback_info(attrs: Dict[str, Any], info_parts: List[str]) -> N
             info_parts.append(f"Lattice: a={a}, b={b}, c={c} A")
 
 
+def _extract_energy_above_hull(attrs: Dict[str, Any]) -> Optional[Any]:
+    """Helper to extract energy_above_hull from flat or nested stability dicts."""
+    stability = attrs.get("_mp_stability", {})
+    if not isinstance(stability, dict):
+        return None
+    if "energy_above_hull" in stability:
+        return stability.get("energy_above_hull")
+    for val in stability.values():
+        if isinstance(val, dict) and "energy_above_hull" in val:
+            return val.get("energy_above_hull")
+    return None
+
+
+def _format_stability_info(attrs: Dict[str, Any], info_parts: List[str]) -> None:
+    """Helper to extract and format stability information from Materials Project metadata."""
+    e_above_hull = _extract_energy_above_hull(attrs)
+    if e_above_hull is None:
+        return
+
+    if isinstance(e_above_hull, float):
+        if abs(e_above_hull) < 1e-6:
+            info_parts.append("Energy Above Hull: 0.0000 eV/atom [Stable ★]")
+        else:
+            info_parts.append(f"Energy Above Hull: {e_above_hull:.4f} eV/atom")
+    else:
+        info_parts.append(f"Energy Above Hull: {e_above_hull} eV/atom")
+
+
+def _format_cod_names_info(attrs: Dict[str, Any], info_parts: List[str]) -> None:
+    """Helper to extract, de-duplicate, and format names from COD metadata."""
+    names = []
+    seen = set()
+    for name_key in ("_cod_commonname", "_cod_chemname", "_cod_mineral"):
+        val = attrs.get(name_key)
+        if val:
+            clean_val = str(val).strip()
+            if clean_val and clean_val.lower() not in seen:
+                seen.add(clean_val.lower())
+                names.append(clean_val)
+    if names:
+        info_parts.append(f"Name: {', '.join(names)}")
+
+
 def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str:
     """Helper to format a single structure OPTIMADE entry info."""
     attrs = entry.get("attributes", {})
@@ -564,17 +607,8 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
     else:
         _format_cod_fallback_info(attrs, info_parts)
 
-    stability = attrs.get("_mp_stability", {})
-    e_above_hull = stability.get("energy_above_hull")
-    if e_above_hull is not None:
-        if isinstance(e_above_hull, float):
-            info_parts.append(f"Energy Above Hull: {e_above_hull:.4f} eV/atom")
-        else:
-            info_parts.append(f"Energy Above Hull: {e_above_hull} eV/atom")
-
-    common_name = attrs.get("_cod_commonname")
-    if common_name:
-        info_parts.append(f"Name: {common_name}")
+    _format_stability_info(attrs, info_parts)
+    _format_cod_names_info(attrs, info_parts)
 
     return " | ".join(info_parts)
 

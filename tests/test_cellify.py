@@ -343,7 +343,9 @@ def test_cli_main_formula_query(capsys):
                 "id": "mp-165",
                 "attributes": {
                     "chemical_formula_descriptive": "Si",
-                    "_mp_stability": {"energy_above_hull": 0.0},
+                    "_mp_stability": {
+                        "gga_gga+u": {"energy_above_hull": 0.0}
+                    },
                     "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
                     "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
                     "species_at_sites": ["Si", "Si"],
@@ -357,6 +359,20 @@ def test_cli_main_formula_query(capsys):
                     "lattice_vectors": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
                     "cartesian_site_positions": [[0.0, 0.0, 0.0]],
                     "species_at_sites": ["Si"],
+                },
+            },
+            {
+                "id": "mp-1000",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.05},
+                },
+            },
+            {
+                "id": "mp-9998",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": "invalid-stability-type",
                 },
             },
         ]
@@ -373,6 +389,8 @@ def test_cli_main_formula_query(capsys):
                     "_cod_b": 5.43,
                     "_cod_c": 5.43,
                     "_cod_commonname": "Silicon",
+                    "_cod_chemname": "Silicon",
+                    "_cod_mineral": "Silicon mineral",
                 },
             },
             {
@@ -414,21 +432,23 @@ def test_cli_main_formula_query(capsys):
 
     captured = capsys.readouterr()
     assert "Querying Materials Project OPTIMADE" in captured.out
-    assert "Found 2 structures in Materials Project" in captured.out
+    assert "Found 4 structures in Materials Project" in captured.out
     assert "mp-165" in captured.out
     assert "Space Group: R-3m" in captured.out
     assert "Volume: 157.46 A^3" in captured.out
     assert "Lattice: a=5.40, b=5.40, c=5.40 A" in captured.out
-    assert "0.0000 eV/atom" in captured.out
+    assert "0.0000 eV/atom [Stable ★]" in captured.out
     assert "mp-9999" in captured.out
     assert "N/A eV/atom" in captured.out
+    assert "mp-1000" in captured.out
+    assert "0.0500 eV/atom" in captured.out
     assert "Querying Crystallography Open Database (COD) OPTIMADE" in captured.out
     assert "Found 2 structures in Crystallography Open Database (COD)" in captured.out
     assert "1526655" in captured.out
     assert "Space Group: F d -3 m :1" in captured.out
     assert "Volume: 160.00 A^3" in captured.out
     assert "Lattice: a=5.43, b=5.43, c=5.43 A" in captured.out
-    assert "Name: Silicon" in captured.out
+    assert "Name: Silicon, Silicon mineral" in captured.out
     assert "1526656" in captured.out
     assert "Volume: invalid-vol A^3" in captured.out
     assert "Lattice: a=invalid-a, b=invalid-b, c=invalid-c A" in captured.out
