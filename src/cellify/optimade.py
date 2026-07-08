@@ -258,8 +258,6 @@ def format_formula_structures(
     out.append(f"Found {len(mp_data)} structures in Materials Project:")
     for entry in mp_data[:5]:
         desc = _format_structure_info(current_idx - 1, entry, formula)
-        # Replace displayed index e.g. [1] with global index e.g. [current_idx]
-        desc = desc.replace(f"[{current_idx}]", f"[{current_idx}]", 1)
         out.append(desc)
         selection_map[current_idx] = ("Materials Project", entry)
         current_idx += 1
@@ -277,7 +275,6 @@ def format_formula_structures(
     )
     for entry in cod_data[:5]:
         desc = _format_structure_info(current_idx - 1, entry, formula)
-        desc = desc.replace(f"[{current_idx}]", f"[{current_idx}]", 1)
         out.append(desc)
         selection_map[current_idx] = ("Crystallography Open Database (COD)", entry)
         current_idx += 1
@@ -292,6 +289,7 @@ def format_formula_structures(
 
 def download_structure_from_entry(db_name: str, entry: Dict[str, Any]) -> Structure:
     """Downloads and parses the crystal structure corresponding to the selection entry."""
+    # pylint: disable=no-else-return
     if db_name == "Materials Project":
         struct = parse_optimade_entry_to_structure(entry)
         if struct is None:
@@ -299,12 +297,16 @@ def download_structure_from_entry(db_name: str, entry: Dict[str, Any]) -> Struct
                 "Failed to parse structure from Materials Project attributes."
             )
         return struct
-
-    entry_id = entry.get("id")
-    if not entry_id:
-        raise ValueError("COD entry has no ID.")
-    url = f"https://www.crystallography.net/cod/{entry_id}.cif"
-    r = requests.get(url, timeout=10)
-    if r.status_code != 200:
-        raise RuntimeError(f"Failed to download CIF from COD: status {r.status_code}")
-    return Structure.from_str(r.text, fmt="cif")
+    elif db_name == "Crystallography Open Database (COD)":
+        entry_id = entry.get("id")
+        if not entry_id:
+            raise ValueError("COD entry has no ID.")
+        url = f"https://www.crystallography.net/cod/{entry_id}.cif"
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            raise RuntimeError(
+                f"Failed to download CIF from COD: status {r.status_code}"
+            )
+        return Structure.from_str(r.text, fmt="cif")
+    else:
+        raise ValueError("Unsupported database name: " + db_name)

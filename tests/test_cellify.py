@@ -1235,3 +1235,8 @@ Si 0 0 0
         assert isinstance(struct_cod, Structure)
         assert len(struct_cod) == 1
         assert set(struct_cod.symbol_set) == {"Si"}
+
+        # 5. Test download structure with unsupported database name
+        import pytest
+        with pytest.raises(ValueError, match="Unsupported database name: UnknownDB"):
+            download_structure_from_entry("UnknownDB", mp_res[0])
