@@ -65,6 +65,13 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
         show_indices: Print absolute atomic indices and coordinate mapping.
     """
     if not os.path.exists(input_path):
+        if "/" not in input_path and "\\" not in input_path and "." not in input_path:
+            from cellify.optimade import retrieve_cif_by_formula
+
+            try:
+                return retrieve_cif_by_formula(input_path)
+            except Exception as e:
+                return f"Error querying formula: {str(e)}"
         return f"Error: Input file '{input_path}' not found."
 
     log: List[str] = []

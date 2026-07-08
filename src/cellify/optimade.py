@@ -121,9 +121,9 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
 
 def _query_single_database(
     db_name: str, base_url: str, formula: str, hill_formula: str
-) -> None:
-    """Helper to query a single OPTIMADE database and display sorted results."""
-    print(f"Querying {db_name} OPTIMADE for '{formula}'...")
+) -> str:
+    """Helper to query a single OPTIMADE database and return sorted results as a string."""
+    out: List[str] = [f"Querying {db_name} OPTIMADE for '{formula}'..."]
     try:
         if db_name == "Materials Project":
             url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22"
@@ -131,8 +131,8 @@ def _query_single_database(
             url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
-            print(f"{db_name} returned status code: {r.status_code}")
-            return
+            out.append(f"{db_name} returned status code: {r.status_code}")
+            return "\n".join(out)
 
         data = r.json().get("data", [])
         if db_name == "Materials Project":
@@ -148,16 +148,17 @@ def _query_single_database(
 
             data = sorted(data, key=get_sort_key)
 
-        print(f"Found {len(data)} structures in {db_name}:")
+        out.append(f"Found {len(data)} structures in {db_name}:")
         for idx, entry in enumerate(data[:5]):
-            print(_format_structure_info(idx, entry, formula))
+            out.append(_format_structure_info(idx, entry, formula))
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error querying {db_name}: {e}")
+        out.append(f"Error querying {db_name}: {e}")
+    return "\n".join(out)
 
 
-def retrieve_cif_by_formula(formula: str) -> None:
+def retrieve_cif_by_formula(formula: str) -> str:
     """
-    Queries OPTIMADE servers for the given chemical formula and prints the results.
+    Queries OPTIMADE servers for the given chemical formula and returns the results.
     """
     try:
         hill_formula = Composition(formula).hill_formula.replace(" ", "")
@@ -169,5 +170,7 @@ def retrieve_cif_by_formula(formula: str) -> None:
         "Crystallography Open Database (COD)": "https://www.crystallography.net/cod/optimade/v1/structures",
     }
 
+    results: List[str] = []
     for db_name, base_url in databases.items():
-        _query_single_database(db_name, base_url, formula, hill_formula)
+        results.append(_query_single_database(db_name, base_url, formula, hill_formula))
+    return "\n\n".join(results)

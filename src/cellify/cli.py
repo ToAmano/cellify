@@ -150,7 +150,7 @@ def main() -> None:  # noqa: C901,CCR001
         if "/" not in args.input and "\\" not in args.input and "." not in args.input:
             from cellify.optimade import retrieve_cif_by_formula
 
-            retrieve_cif_by_formula(args.input)
+            print(retrieve_cif_by_formula(args.input))
             sys.exit(0)
         else:
             print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
