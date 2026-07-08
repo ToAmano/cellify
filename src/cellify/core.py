@@ -504,11 +504,65 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
     return structure, log_stream.getvalue()
 
 
+def parse_optimade_entry_to_structure(entry: Dict[str, Any]) -> Optional[Structure]:
+    """Converts an OPTIMADE entry dictionary to a pymatgen Structure object."""
+    try:
+        attrs = entry.get("attributes", {})
+        lattice = attrs.get("lattice_vectors")
+        species = attrs.get("species_at_sites")
+        coords = attrs.get("cartesian_site_positions")
+        if lattice and species and coords:
+            return Structure(lattice, species, coords, coords_are_cartesian=True)
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+    return None
+
+
+def _format_cod_fallback_info(attrs: Dict[str, Any], info_parts: List[str]) -> None:
+    """Helper to extract and format fallback attributes from COD metadata."""
+    sg_symbol = attrs.get("_cod_sg")
+    if sg_symbol:
+        info_parts.append(f"Space Group: {sg_symbol}")
+
+    vol = attrs.get("_cod_vol") or attrs.get("_cod_volume")
+    if vol:
+        try:
+            info_parts.append(f"Volume: {float(vol):.2f} A^3")
+        except ValueError:
+            info_parts.append(f"Volume: {vol} A^3")
+
+    a = attrs.get("_cod_a")
+    b = attrs.get("_cod_b")
+    c = attrs.get("_cod_c")
+    if a and b and c:
+        try:
+            info_parts.append(
+                f"Lattice: a={float(a):.2f}, b={float(b):.2f}, c={float(c):.2f} A"
+            )
+        except ValueError:
+            info_parts.append(f"Lattice: a={a}, b={b}, c={c} A")
+
+
 def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str:
     """Helper to format a single structure OPTIMADE entry info."""
     attrs = entry.get("attributes", {})
     desc = attrs.get("chemical_formula_descriptive", formula)
     info_parts = [f"  [{idx+1}] ID: {entry.get('id')}", f"Formula: {desc}"]
+
+    structure = parse_optimade_entry_to_structure(entry)
+    if structure is not None:
+        try:
+            sga = SpacegroupAnalyzer(structure)
+            sg_symbol = sga.get_space_group_symbol()
+            info_parts.append(f"Space Group: {sg_symbol}")
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+        info_parts.append(f"Volume: {structure.volume:.2f} A^3")
+        lat = structure.lattice
+        info_parts.append(f"Lattice: a={lat.a:.2f}, b={lat.b:.2f}, c={lat.c:.2f} A")
+    else:
+        _format_cod_fallback_info(attrs, info_parts)
 
     stability = attrs.get("_mp_stability", {})
     e_above_hull = stability.get("energy_above_hull")
@@ -517,6 +571,11 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
             info_parts.append(f"Energy Above Hull: {e_above_hull:.4f} eV/atom")
         else:
             info_parts.append(f"Energy Above Hull: {e_above_hull} eV/atom")
+
+    common_name = attrs.get("_cod_commonname")
+    if common_name:
+        info_parts.append(f"Name: {common_name}")
+
     return " | ".join(info_parts)
 
 

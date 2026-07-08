@@ -344,6 +344,9 @@ def test_cli_main_formula_query(capsys):
                 "attributes": {
                     "chemical_formula_descriptive": "Si",
                     "_mp_stability": {"energy_above_hull": 0.0},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
                 },
             },
             {
@@ -351,6 +354,9 @@ def test_cli_main_formula_query(capsys):
                 "attributes": {
                     "chemical_formula_descriptive": "Si",
                     "_mp_stability": {"energy_above_hull": "N/A"},
+                    "lattice_vectors": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0]],
+                    "species_at_sites": ["Si"],
                 },
             },
         ]
@@ -361,8 +367,25 @@ def test_cli_main_formula_query(capsys):
                 "id": "1526655",
                 "attributes": {
                     "chemical_formula_descriptive": "Si",
+                    "_cod_sg": "F d -3 m :1",
+                    "_cod_vol": 160.0,
+                    "_cod_a": 5.43,
+                    "_cod_b": 5.43,
+                    "_cod_c": 5.43,
+                    "_cod_commonname": "Silicon",
                 },
-            }
+            },
+            {
+                "id": "1526656",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_cod_sg": "F d -3 m",
+                    "_cod_vol": "invalid-vol",
+                    "_cod_a": "invalid-a",
+                    "_cod_b": "invalid-b",
+                    "_cod_c": "invalid-c",
+                },
+            },
         ]
     }
 
@@ -393,12 +416,64 @@ def test_cli_main_formula_query(capsys):
     assert "Querying Materials Project OPTIMADE" in captured.out
     assert "Found 2 structures in Materials Project" in captured.out
     assert "mp-165" in captured.out
+    assert "Space Group: R-3m" in captured.out
+    assert "Volume: 157.46 A^3" in captured.out
+    assert "Lattice: a=5.40, b=5.40, c=5.40 A" in captured.out
     assert "0.0000 eV/atom" in captured.out
     assert "mp-9999" in captured.out
     assert "N/A eV/atom" in captured.out
     assert "Querying Crystallography Open Database (COD) OPTIMADE" in captured.out
-    assert "Found 1 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Found 2 structures in Crystallography Open Database (COD)" in captured.out
     assert "1526655" in captured.out
+    assert "Space Group: F d -3 m :1" in captured.out
+    assert "Volume: 160.00 A^3" in captured.out
+    assert "Lattice: a=5.43, b=5.43, c=5.43 A" in captured.out
+    assert "Name: Silicon" in captured.out
+    assert "1526656" in captured.out
+    assert "Volume: invalid-vol A^3" in captured.out
+    assert "Lattice: a=invalid-a, b=invalid-b, c=invalid-c A" in captured.out
+
+
+def test_cli_main_formula_query_sg_error(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.0},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self.json_data
+
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        with patch("cellify.core.SpacegroupAnalyzer", side_effect=RuntimeError("spglib error")):
+            test_args = ["cellify", "-i", "Si"]
+            with patch("sys.argv", test_args):
+                from cellify.cli import main
+                with pytest.raises(SystemExit) as excinfo:
+                    main()
+                assert excinfo.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "Querying Materials Project OPTIMADE" in captured.out
+    assert "Space Group" not in captured.out
+    assert "Volume: 157.46 A^3" in captured.out
 
 
 def test_cli_main_formula_query_status_non_200(capsys):
