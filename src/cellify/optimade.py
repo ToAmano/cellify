@@ -126,7 +126,7 @@ def _query_single_database(
     out: List[str] = [f"Querying {db_name} OPTIMADE for '{formula}'..."]
     try:
         if db_name == "Materials Project":
-            url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22"
+            url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22&page_limit=100"
         else:
             url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=5"
         r = requests.get(url, timeout=10)
