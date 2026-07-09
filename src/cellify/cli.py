@@ -158,68 +158,62 @@ def main() -> None:  # noqa: C901,CCR001
 
     if not os.path.exists(args.input):
         if "/" not in args.input and "\\" not in args.input and "." not in args.input:
-            from cellify.optimade import (
-                download_structure_from_entry,
-                format_formula_structures,
-                query_formula_structures,
-            )
+            from cellify.optimade import select_and_download_structure
 
             formula = args.input
-            mp_data, cod_data = query_formula_structures(formula)
-            summary, selection_map = format_formula_structures(
-                mp_data, cod_data, formula
-            )
-            print(summary)
 
-            if not selection_map:
-                print(
-                    f"Error: No structures found for formula '{formula}'.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            if args.select is not None:
-                choice = args.select
-                if choice not in selection_map:
-                    print(
-                        f"Error: Selection index {choice} is out of range.",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-            elif sys.stdin.isatty():
+            def cli_prompt(summary: str, limit: int) -> int:
+                print(summary)
                 try:
-                    choice_str = input(
-                        f"Select a structure (1-{len(selection_map)}): "
-                    ).strip()
+                    choice_str = input(f"Select a structure (1-{limit}): ").strip()
                     if not choice_str:
                         print("Error: Invalid selection.", file=sys.stderr)
                         sys.exit(1)
                     choice = int(choice_str)
-                    if choice not in selection_map:
+                    if not 1 <= choice <= limit:
                         print(
                             f"Error: Selection index {choice} is out of range.",
                             file=sys.stderr,
                         )
                         sys.exit(1)
+                    return choice
                 except (ValueError, KeyboardInterrupt, EOFError):
                     print("\nError: Invalid selection.", file=sys.stderr)
                     sys.exit(1)
-            else:
-                print(
-                    "Error: Chemical formula specified, but the session is non-interactive "
-                    "and --select was not provided.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
 
-            db_name, entry = selection_map[choice]
-            print(f"Downloading structure from {db_name} (ID: {entry.get('id')})...")
+            interactive_prompt = cli_prompt if sys.stdin.isatty() else None
+
             try:
-                structure = download_structure_from_entry(db_name, entry)
+                db_name: str
+                entry: Dict[str, Any]
+                summary: str
+                structure, db_name, entry, summary = select_and_download_structure(
+                    formula,
+                    select=args.select,
+                    interactive_prompt=interactive_prompt,
+                )
+            except ValueError as e:
+                try:
+                    from cellify.optimade import (
+                        format_formula_structures,
+                        query_formula_structures,
+                    )
+
+                    mp_data, cod_data = query_formula_structures(formula)
+                    summary, _ = format_formula_structures(mp_data, cod_data, formula)
+                    print(summary)
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 print(f"Error downloading structure: {e}", file=sys.stderr)
                 sys.exit(1)
 
+            if args.select is not None:
+                print(summary)
+
+            print(f"Downloading structure from {db_name} (ID: {entry.get('id')})...")
             entry_id = entry.get("id", "unknown")
             args.input = f"{formula}_{entry_id}.cif"
             meta_data = {}
