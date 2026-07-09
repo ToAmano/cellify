@@ -167,19 +167,16 @@ def main() -> None:  # noqa: C901,CCR001
                 try:
                     choice_str = input(f"Select a structure (1-{limit}): ").strip()
                     if not choice_str:
-                        print("Error: Invalid selection.", file=sys.stderr)
-                        sys.exit(1)
+                        raise ValueError("Invalid selection.")
                     choice = int(choice_str)
                     if not 1 <= choice <= limit:
-                        print(
-                            f"Error: Selection index {choice} is out of range.",
-                            file=sys.stderr,
-                        )
-                        sys.exit(1)
+                        raise ValueError("Invalid selection.")
                     return choice
-                except (ValueError, KeyboardInterrupt, EOFError):
-                    print("\nError: Invalid selection.", file=sys.stderr)
-                    sys.exit(1)
+                except (KeyboardInterrupt, EOFError):
+                    print()
+                    raise ValueError("Invalid selection.") from None
+                except ValueError:
+                    raise ValueError("Invalid selection.") from None
 
             interactive_prompt = cli_prompt if sys.stdin.isatty() else None
 

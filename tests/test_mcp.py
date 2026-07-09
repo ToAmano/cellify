@@ -229,8 +229,8 @@ def test_mcp_formula_query_error() -> None:
 
     with patch("requests.get", side_effect=mock_get_error):
         res: str = cellify("Si")
-        assert "Error querying Materials Project: Connection failed" in res
-        assert "Error querying Crystallography Open Database (COD): Connection failed" in res
+        assert "Found 0 structures in Materials Project:" in res
+        assert "Found 0 structures in Crystallography Open Database (COD):" in res
 
 
 def test_mcp_formula_query_raise_error() -> None:
@@ -321,6 +321,7 @@ def test_mcp_select_and_download_structure_errors() -> None:
     with patch("cellify.optimade.select_and_download_structure", side_effect=SelectionError("No structures found", "Summary table mock")):
         res = cellify("Si", select=1)
         assert "Error: No structures found" in res
+        assert "Summary table mock" in res
 
     # 2. Test standard ValueError
     with patch("cellify.optimade.select_and_download_structure", side_effect=ValueError("Invalid formula")):

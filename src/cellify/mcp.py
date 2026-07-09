@@ -73,6 +73,7 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     if not os.path.exists(input_path):
         if "/" not in input_path and "\\" not in input_path and "." not in input_path:
             from cellify.optimade import (
+                SelectionError,
                 retrieve_cif_by_formula,
                 select_and_download_structure,
             )
@@ -93,6 +94,8 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
                 entry_id = entry.get("id", "unknown")
                 log.append(f"Downloading structure from {db_name} (ID: {entry_id})...")
                 input_path = f"{input_path}_{entry_id}.cif"
+            except SelectionError as e:
+                return f"Error: {str(e)}\n\n{e.summary}"
             except ValueError as e:
                 return f"Error: {str(e)}"
             except Exception as e:

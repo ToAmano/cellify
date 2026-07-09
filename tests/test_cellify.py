@@ -1469,7 +1469,7 @@ def test_cli_main_formula_query_interactive_select_invalid(capsys):
                     assert excinfo.value.code == 1
 
     captured = capsys.readouterr()
-    assert "Error: Selection index 5 is out of range." in captured.err
+    assert "Error: Invalid selection." in captured.err
 
     # test empty choice input
     with patch("requests.get", side_effect=mock_get):

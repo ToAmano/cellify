@@ -168,61 +168,10 @@ def _sort_cod_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(data, key=get_cod_sort_key)
 
 
-def _query_single_database(
-    db_name: str, base_url: str, formula: str, hill_formula: str
-) -> str:
-    """Helper to query a single OPTIMADE database and return sorted results as a string."""
-    out: List[str] = [f"Querying {db_name} OPTIMADE for '{formula}'..."]
-    try:
-        if db_name == "Materials Project":
-            url = f"{base_url}?filter=chemical_formula_reduced=%22{hill_formula}%22&page_limit=100"
-        else:
-            url = f"{base_url}?filter=chemical_formula_hill=%22{hill_formula}%22&page_limit=100"
-        r = requests.get(url, timeout=10)
-        if r.status_code != 200:
-            out.append(f"{db_name} returned status code: {r.status_code}")
-            return "\n".join(out)
-
-        data = r.json().get("data", [])
-        if db_name == "Materials Project":
-            data = _sort_materials_project_data(data)
-        elif db_name == "Crystallography Open Database (COD)":
-            data = _sort_cod_data(data)
-
-        out.append(f"Found {len(data)} structures in {db_name}:")
-        for idx, entry in enumerate(data[:5]):
-            out.append(_format_structure_info(idx, entry, formula))
-
-        # Print a warning/notice if the total results count exceeds the displayed limit of 5
-        if len(data) > 5:
-            out.append(
-                f"  Warning: Only the top 5 most relevant structures are shown. "
-                f"There are {len(data) - 5} more structures in {db_name}."
-            )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        out.append(f"Error querying {db_name}: {e}")
-    return "\n".join(out)
-
-
 def retrieve_cif_by_formula(formula: str) -> str:
-    """
-    Queries OPTIMADE servers for the given chemical formula and returns the results.
-    """
-    try:
-        hill_formula = Composition(formula).hill_formula.replace(" ", "")
-    except Exception:  # pylint: disable=broad-exception-caught
-        hill_formula = formula
-
-    # Currently we only support querying Materials Project and Crystallography Open Database (COD).
-    databases = {
-        "Materials Project": "https://optimade.materialsproject.org/v1/structures",
-        "Crystallography Open Database (COD)": "https://www.crystallography.net/cod/optimade/v1/structures",
-    }
-
-    results: List[str] = []
-    for db_name, base_url in databases.items():
-        results.append(_query_single_database(db_name, base_url, formula, hill_formula))
-    return "\n\n".join(results)
+    mp_data, cod_data = query_formula_structures(formula)
+    summary, _ = format_formula_structures(mp_data, cod_data, formula)
+    return summary
 
 
 def query_formula_structures(
