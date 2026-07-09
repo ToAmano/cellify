@@ -193,17 +193,9 @@ def main() -> None:  # noqa: C901,CCR001
                     interactive_prompt=interactive_prompt,
                 )
             except ValueError as e:
-                try:
-                    from cellify.optimade import (
-                        format_formula_structures,
-                        query_formula_structures,
-                    )
-
-                    mp_data, cod_data = query_formula_structures(formula)
-                    summary, _ = format_formula_structures(mp_data, cod_data, formula)
+                summary = getattr(e, "summary", "")
+                if summary:
                     print(summary)
-                except Exception:  # pylint: disable=broad-exception-caught
-                    pass
                 print(f"Error: {e}", file=sys.stderr)
                 sys.exit(1)
             except Exception as e:  # pylint: disable=broad-exception-caught

@@ -10,6 +10,16 @@ from pymatgen.core import Composition, Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 
+class SelectionError(ValueError):
+    """Exception raised when structure selection fails during OPTIMADE query."""
+
+    summary: str
+
+    def __init__(self, message: str, summary: str) -> None:
+        super().__init__(message)
+        self.summary = summary
+
+
 def parse_optimade_entry_to_structure(entry: Dict[str, Any]) -> Optional[Structure]:
     """Converts an OPTIMADE entry dictionary to a pymatgen Structure object."""
     try:
@@ -325,20 +335,21 @@ def select_and_download_structure(
     summary, selection_map = format_formula_structures(mp_data, cod_data, formula)
 
     if not selection_map:
-        raise ValueError(f"No structures found for formula '{formula}'.")
+        raise SelectionError(f"No structures found for formula '{formula}'.", summary)
 
     if select is not None:
         choice = select
     elif interactive_prompt is not None:
         choice = interactive_prompt(summary, len(selection_map))
     else:
-        raise ValueError(
+        raise SelectionError(
             "Chemical formula specified, but the session is non-interactive "
-            "and --select was not provided."
+            "and --select was not provided.",
+            summary,
         )
 
     if choice not in selection_map:
-        raise ValueError(f"Selection index {choice} is out of range.")
+        raise SelectionError(f"Selection index {choice} is out of range.", summary)
 
     db_name, entry = selection_map[choice]
     structure = download_structure_from_entry(db_name, entry)

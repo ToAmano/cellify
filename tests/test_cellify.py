@@ -1245,7 +1245,7 @@ Si 0 0 0
 
 
 def test_select_and_download_structure():
-    from cellify.optimade import select_and_download_structure
+    from cellify.optimade import select_and_download_structure, SelectionError
     from unittest.mock import patch, MagicMock
     from pymatgen.core import Structure
 
@@ -1285,21 +1285,24 @@ def test_select_and_download_structure():
 
     # 3. Test no structures found
     with patch("cellify.optimade.query_formula_structures", return_value=([], [])), \
-         patch("cellify.optimade.format_formula_structures", return_value=("", {})):
-        with pytest.raises(ValueError, match="No structures found for formula 'Si'."):
+         patch("cellify.optimade.format_formula_structures", return_value=("empty_summary", {})):
+        with pytest.raises(SelectionError, match="No structures found for formula 'Si'.") as excinfo:
             select_and_download_structure("Si", select=1)
+        assert excinfo.value.summary == "empty_summary"
 
     # 4. Test no select or interactive_prompt provided
     with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
          patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})):
-        with pytest.raises(ValueError, match="Chemical formula specified, but the session is non-interactive"):
+        with pytest.raises(SelectionError, match="Chemical formula specified, but the session is non-interactive") as excinfo:
             select_and_download_structure("Si")
+        assert excinfo.value.summary == "summary"
 
     # 5. Test selection index out of range
     with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
          patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})):
-        with pytest.raises(ValueError, match="Selection index 2 is out of range."):
+        with pytest.raises(SelectionError, match="Selection index 2 is out of range.") as excinfo:
             select_and_download_structure("Si", select=2)
+        assert excinfo.value.summary == "summary"
 
 
 def test_cli_main_formula_query_select_out_of_range(capsys):
