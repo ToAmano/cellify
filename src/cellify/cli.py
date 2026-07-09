@@ -275,7 +275,7 @@ def main() -> None:  # noqa: C901,CCR001
             print(f"Error launching WebGL viewer: {e}", file=sys.stderr)
             try:
                 print("Attempting to fall back to ASE native GUI viewer...")
-                import _tkinter  # noqa: F401 # pylint: disable=unused-import
+                import _tkinter  # noqa: F401 # pylint: disable=unused-import,import-error
                 from ase.visualize import view
                 from pymatgen.io.ase import AseAtomsAdaptor
 
