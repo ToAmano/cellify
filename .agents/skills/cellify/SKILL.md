@@ -11,7 +11,7 @@ This skill guides you in using `cellify` to manipulate crystal structure files (
 Use this skill when you need to perform the following structure-building tasks:
 - **Structure Retrieval**: Search and list crystal structure candidates from public databases (Materials Project and COD) by chemical formula using OPTIMADE.
 - **Conventionalization**: Convert primitive/arbitrary unit cells to standard conventional cells (`--conventional`).
-- **Supercell Generation**: Build larger periodic structures (`--supercell` or `-s`) from a unit cell.
+- **Supercell Generation**: Build larger periodic structures using diagonal scaling factors (`-d`/`--dim`), a transformation matrix (`-m`/`--matrix`), or target minimum periodic distance (`--min-dist`).
 - **Vacancy / Defect Builder**: Remove (`--vacancy` or `-v`) or substitute (`--doping` or `-d`) atoms to model defects or dopants.
 - **Slab Cutting**: Create 2D surface slabs (`--slab`) with custom Miller indices, thickness, and vacuum space.
 - **Index Mapping Inspection**: Show mapping of absolute atomic indices to element types and coordinates (`--show-indices`).
@@ -34,10 +34,9 @@ cellify -i <INPUT_FILE_OR_FORMULA> [OPTIONS] -o <OUTPUT_FILE>
 
 ### Transformation Options
 - `--conventional`: Converts the input structure to its standard conventional cell representation *before* applying supercell scaling or defects.
-- `-s, --supercell DIM`: Generates a supercell. `DIM` can be:
-  - Three integers (e.g. `2 2 2`) for simple diagonal scaling.
-  - A matrix string of 9 comma-separated integers (e.g. `2,0,0,0,2,0,0,0,2` representing the scaling matrix rows).
-  - *If omitted*, `cellify` automatically scales the supercell based on a target minimum periodic distance (default is 10.0 Å).
+- `-d, --dim nx ny nz`: Diagonal scaling factors for the supercell (e.g., `-d 2 2 2`).
+- `-m, --matrix MATRIX`: 3x3 transformation matrix (e.g., `'2,0,0,0,2,0,0,0,2'`).
+- `--min-dist DISTANCE`: Automatically scales the supercell so that the minimum periodic distance is >= DISTANCE (default is 10.0 Å if no other supercell option is specified).
 - `-v, --vacancy RULES`: Removes atoms. Rules can be:
   - Element and count: `<Element>:<Count>` (e.g., `Si:2` - deletes the first 2 Si atoms).
   - Element and absolute indices: `<Element>:<index1>,<index2>,...` (e.g., `Si:0,4` - deletes Si atoms at absolute indices 0 and 4).
@@ -80,7 +79,7 @@ cellify -i TiO2 --select 1 -o TiO2_entry.cif
 
 ### Example 2: Create a 2x2x2 Supercell of Silicon
 ```bash
-cellify -i POSCAR -s 2 2 2 -o POSCAR_222
+cellify -i POSCAR -d 2 2 2 -o POSCAR_222
 ```
 
 ### Example 3: Inspect Indices of a Slab Model
@@ -91,10 +90,10 @@ cellify -i qe.in --conventional --slab 1,1,1,3,15 --show-indices
 ### Example 4: Create a Doped Divacancy Model in 3C-SiC
 ```bash
 # 1. Convert to conventional cell, scale, and print indices to locate C atoms
-cellify -i POSCAR --conventional -s 2 2 2 --show-indices
+cellify -i POSCAR --conventional -d 2 2 2 --show-indices
 
 # 2. Re-run to delete Si at index 0 and C at index 32
-cellify -i POSCAR --conventional -s 2 2 2 -v Si:0 -v C:32 -o POSCAR_divacancy
+cellify -i POSCAR --conventional -d 2 2 2 -v Si:0 -v C:32 -o POSCAR_divacancy
 ```
 
 ---
