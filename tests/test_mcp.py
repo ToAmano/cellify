@@ -309,3 +309,20 @@ def test_mcp_formula_query_with_select(tmp_path: pytest.TempPathFactory) -> None
          patch("cellify.optimade.download_structure_from_entry", side_effect=RuntimeError("Download failed")):
         res_dl_err: str = cellify("Si", select=1)
         assert "Error downloading structure: Download failed" in res_dl_err
+
+
+def test_mcp_select_and_download_structure_errors() -> None:
+    """
+    Tests error handling when select_and_download_structure raises exceptions.
+    """
+    from cellify.optimade import SelectionError
+
+    # 1. Test SelectionError
+    with patch("cellify.optimade.select_and_download_structure", side_effect=SelectionError("No structures found", "Summary table mock")):
+        res = cellify("Si", select=1)
+        assert "Error: No structures found" in res
+
+    # 2. Test standard ValueError
+    with patch("cellify.optimade.select_and_download_structure", side_effect=ValueError("Invalid formula")):
+        res = cellify("Si", select=1)
+        assert "Error: Invalid formula" in res

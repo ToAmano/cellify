@@ -73,10 +73,8 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     if not os.path.exists(input_path):
         if "/" not in input_path and "\\" not in input_path and "." not in input_path:
             from cellify.optimade import (
-                download_structure_from_entry,
-                format_formula_structures,
-                query_formula_structures,
                 retrieve_cif_by_formula,
+                select_and_download_structure,
             )
 
             if select is None:
@@ -86,23 +84,17 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
                     return f"Error querying formula: {str(e)}"
 
             try:
-                mp_data, cod_data = query_formula_structures(input_path)
-                _, selection_map = format_formula_structures(
-                    mp_data, cod_data, input_path
+                db_name: str
+                entry: Dict[str, Any]
+                structure, db_name, entry, _ = select_and_download_structure(
+                    input_path, select=select
                 )
-            except Exception as e:
-                return f"Error querying formula: {str(e)}"
-
-            if select not in selection_map:
-                return f"Error: Selection index {select} is out of range."
-
-            db_name, entry = selection_map[select]
-            entry_id = entry.get("id", "unknown")
-            log.append(f"Downloading structure from {db_name} (ID: {entry_id})...")
-            try:
-                structure = download_structure_from_entry(db_name, entry)
                 meta_data = {}
+                entry_id = entry.get("id", "unknown")
+                log.append(f"Downloading structure from {db_name} (ID: {entry_id})...")
                 input_path = f"{input_path}_{entry_id}.cif"
+            except ValueError as e:
+                return f"Error: {str(e)}"
             except Exception as e:
                 return f"Error downloading structure: {str(e)}"
         else:
