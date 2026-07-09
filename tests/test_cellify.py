@@ -1244,6 +1244,64 @@ Si 0 0 0
             download_structure_from_entry("UnknownDB", mp_res[0])
 
 
+def test_select_and_download_structure():
+    from cellify.optimade import select_and_download_structure
+    from unittest.mock import patch, MagicMock
+    from pymatgen.core import Structure
+
+    # Dummy Structure
+    dummy_structure = Structure([[1,0,0],[0,1,0],[0,0,1]], ["Si"], [[0,0,0]])
+    dummy_entry = {"id": "mp-1"}
+
+    mock_mp = [dummy_entry]
+    mock_cod = []
+
+    # 1. Test success with select
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)) as mock_query, \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})) as mock_format, \
+         patch("cellify.optimade.download_structure_from_entry", return_value=dummy_structure) as mock_download:
+
+        struct, db, entry, summary = select_and_download_structure("Si", select=1)
+        assert struct == dummy_structure
+        assert db == "Materials Project"
+        assert entry == dummy_entry
+        assert summary == "summary"
+        mock_query.assert_called_once_with("Si")
+        mock_format.assert_called_once_with(mock_mp, mock_cod, "Si")
+        mock_download.assert_called_once_with("Materials Project", dummy_entry)
+
+    # 2. Test success with interactive callback
+    mock_prompt = MagicMock(return_value=1)
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})), \
+         patch("cellify.optimade.download_structure_from_entry", return_value=dummy_structure):
+
+        struct, db, entry, summary = select_and_download_structure("Si", interactive_prompt=mock_prompt)
+        assert struct == dummy_structure
+        assert db == "Materials Project"
+        assert entry == dummy_entry
+        assert summary == "summary"
+        mock_prompt.assert_called_once_with("summary", 1)
+
+    # 3. Test no structures found
+    with patch("cellify.optimade.query_formula_structures", return_value=([], [])), \
+         patch("cellify.optimade.format_formula_structures", return_value=("", {})):
+        with pytest.raises(ValueError, match="No structures found for formula 'Si'."):
+            select_and_download_structure("Si", select=1)
+
+    # 4. Test no select or interactive_prompt provided
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})):
+        with pytest.raises(ValueError, match="Chemical formula specified, but the session is non-interactive"):
+            select_and_download_structure("Si")
+
+    # 5. Test selection index out of range
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})):
+        with pytest.raises(ValueError, match="Selection index 2 is out of range."):
+            select_and_download_structure("Si", select=2)
+
+
 def test_cli_main_formula_query_select_out_of_range(capsys):
     mock_mp_response = {
         "data": [

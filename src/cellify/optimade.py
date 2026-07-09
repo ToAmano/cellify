@@ -3,7 +3,7 @@ OPTIMADE API client and query handlers for cellify.
 Allows querying materials databases by chemical formula.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests  # type: ignore[import-untyped]
 from pymatgen.core import Composition, Structure
@@ -310,3 +310,36 @@ def download_structure_from_entry(db_name: str, entry: Dict[str, Any]) -> Struct
         return Structure.from_str(r.text, fmt="cif")
     else:
         raise ValueError("Unsupported database name: " + db_name)
+
+
+def select_and_download_structure(
+    formula: str,
+    select: Optional[int] = None,
+    interactive_prompt: Optional[Callable[[str, int], int]] = None,
+) -> Tuple[Structure, str, Dict[str, Any], str]:
+    """
+    Unified function to query OPTIMADE databases for a formula, format/index the results,
+    handle interactive/non-interactive selection, and download the chosen structure.
+    """
+    mp_data, cod_data = query_formula_structures(formula)
+    summary, selection_map = format_formula_structures(mp_data, cod_data, formula)
+
+    if not selection_map:
+        raise ValueError(f"No structures found for formula '{formula}'.")
+
+    if select is not None:
+        choice = select
+    elif interactive_prompt is not None:
+        choice = interactive_prompt(summary, len(selection_map))
+    else:
+        raise ValueError(
+            "Chemical formula specified, but the session is non-interactive "
+            "and --select was not provided."
+        )
+
+    if choice not in selection_map:
+        raise ValueError(f"Selection index {choice} is out of range.")
+
+    db_name, entry = selection_map[choice]
+    structure = download_structure_from_entry(db_name, entry)
+    return structure, db_name, entry, summary
