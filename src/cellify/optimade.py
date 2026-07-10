@@ -13,11 +13,13 @@ from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 class SelectionError(ValueError):
     """Exception raised when structure selection fails during OPTIMADE query."""
 
-    summary: str
+    @property
+    def summary(self) -> str:
+        """Returns the search summary table."""
+        return str(self.args[1])
 
-    def __init__(self, message: str, summary: str) -> None:
-        super().__init__(message)
-        self.summary = summary
+    def __str__(self) -> str:
+        return str(self.args[0])
 
 
 def parse_optimade_entry_to_structure(entry: Dict[str, Any]) -> Optional[Structure]:
