@@ -45,6 +45,7 @@ jobs:
         with:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
 
       - name: Build package verification
         run: |
