@@ -75,6 +75,9 @@ When working with Quantum ESPRESSO `*.in` files:
 ```bash
 # Non-interactively select the 1st structure from the query results for TiO2 and save it
 cellify -i TiO2 --select 1 -o TiO2_entry.cif
+
+# Omitting --select triggers interactive selection (if running in a TTY environment)
+cellify -i TiO2 -o TiO2_interactive.cif
 ```
 
 ### Example 2: Create a 2x2x2 Supercell of Silicon

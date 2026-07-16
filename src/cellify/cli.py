@@ -157,12 +157,20 @@ def main() -> None:  # noqa: C901,CCR001
     meta_data: Dict[str, Any]
 
     if not os.path.exists(args.input):
+        # Fallback detection: If the input file does not exist and has no path separator
+        # or extension, we treat it as a chemical formula and query external databases
+        # via OPTIMADE API.
         if "/" not in args.input and "\\" not in args.input and "." not in args.input:
             from cellify.optimade import select_and_download_structure
 
             formula = args.input
 
             def cli_prompt(summary: str, limit: int) -> int:
+                """Handles interactive user inputs from stdout/stdin and validates the choice index.
+
+                Displays the search results summary and prompts the user to enter a
+                valid 1-based index corresponding to a candidate structure.
+                """
                 print(summary)
                 try:
                     choice_str = input(f"Select a structure (1-{limit}): ").strip()
@@ -178,6 +186,9 @@ def main() -> None:  # noqa: C901,CCR001
                 except ValueError:
                     raise ValueError("Invalid selection.") from None
 
+            # Selection mode configuration: If the user specified a selection index via
+            # --select, it directly determines the structure to download. Otherwise,
+            # we trigger the interactive prompt selection only if we are in a TTY environment.
             interactive_prompt = cli_prompt if sys.stdin.isatty() else None
 
             try:

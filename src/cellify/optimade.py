@@ -132,7 +132,12 @@ def _format_structure_info(idx: int, entry: Dict[str, Any], formula: str) -> str
 
 
 def _sort_materials_project_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Sorts Materials Project entries by thermodynamic stability."""
+    """Sorts Materials Project entries by thermodynamic stability.
+
+    We sort Materials Project structures by their energy above hull (most stable first).
+    Unstable or unmeasured structures with missing or invalid values are assigned a
+    fallback value of float("inf") so that they are pushed to the bottom of the list.
+    """
 
     def get_sort_key(entry: Dict[str, Any]) -> float:
         attrs = entry.get("attributes", {})
@@ -147,7 +152,13 @@ def _sort_materials_project_data(data: List[Dict[str, Any]]) -> List[Dict[str, A
 
 
 def _sort_cod_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Sorts COD entries to prioritize named structures."""
+    """Sorts COD entries to prioritize named structures.
+
+    We sort COD structures to prioritize named ones (commonname, mineral, or chemname)
+    over unnamed ones so that users get descriptive crystal names (e.g., Graphite,
+    Diamond) first. Within each priority group, entries are sorted by their database
+    entry ID in ascending order.
+    """
 
     def get_cod_sort_key(entry: Dict[str, Any]) -> Tuple[int, int]:
         attrs = entry.get("attributes", {})
@@ -179,7 +190,11 @@ def retrieve_cif_by_formula(formula: str) -> str:
 def query_formula_structures(
     formula: str,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Queries OPTIMADE databases and returns the raw entries for Materials Project and COD."""
+    """Queries OPTIMADE databases and returns the raw entries for Materials Project and COD.
+
+    Currently, we only support querying the Materials Project and Crystallography
+    Open Database (COD) via their respective OPTIMADE endpoints.
+    """
     try:
         hill_formula = Composition(formula).hill_formula.replace(" ", "")
     except Exception:  # pylint: disable=broad-exception-caught
@@ -210,7 +225,12 @@ def query_formula_structures(
 def format_formula_structures(
     mp_data: List[Dict[str, Any]], cod_data: List[Dict[str, Any]], formula: str
 ) -> Tuple[str, Dict[int, Tuple[str, Dict[str, Any]]]]:
-    """Formats the structures query results and constructs a selection mapping."""
+    """Formats the structures query results and constructs a selection mapping.
+
+    Note that we limit the displayed list to the top 5 candidate entries from each
+    database (Materials Project and COD) to prevent terminal clutter and keep the
+    interactive choice selection manageable for the user.
+    """
     out: List[str] = []
     selection_map: Dict[int, Tuple[str, Dict[str, Any]]] = {}
     current_idx = 1
@@ -278,11 +298,25 @@ def select_and_download_structure(
     select: Optional[int] = None,
     interactive_prompt: Optional[Callable[[str, int], int]] = None,
 ) -> Tuple[Structure, str, Dict[str, Any], str]:
-    """
-    Unified function to query OPTIMADE databases for a formula, format/index the results,
+    """Unified function to query OPTIMADE databases for a formula, format/index the results,
+
     handle interactive/non-interactive selection, and download the chosen structure.
+
+    Args:
+        formula: The chemical formula of the target crystal structure (e.g., "C").
+        select: An optional 1-indexed selection index to bypass the interactive prompt.
+        interactive_prompt: An optional callable that accepts the formatted summary text
+            and the maximum selection choice, returning the user's selected choice.
+
+    Returns:
+        A tuple of:
+            - structure: The downloaded pymatgen Structure object.
+            - db_name: The name of the database the structure was sourced from.
+            - entry: The raw OPTIMADE response dictionary for the selected entry.
+            - summary: The text table summarizing all candidate structures.
     """
     mp_data, cod_data = query_formula_structures(formula)
+    # The summary is a formatted text table of candidate structures from Materials Project and COD
     summary, selection_map = format_formula_structures(mp_data, cod_data, formula)
 
     if not selection_map:
