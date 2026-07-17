@@ -1484,3 +1484,86 @@ def test_cli_main_formula_query_interactive_select_invalid(capsys):
 
     captured = capsys.readouterr()
     assert "Error: Invalid selection." in captured.err
+
+
+def test_cli_main_formula_query_interactive_keyboard_interrupt(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", side_effect=KeyboardInterrupt):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err
+
+
+def test_cli_main_formula_query_general_download_error(capsys):
+    with patch("cellify.optimade.select_and_download_structure", side_effect=RuntimeError("Some network error")):
+        test_args = ["cellify", "-i", "Si", "--select", "1"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error downloading structure: Some network error" in captured.err
+
+
+def test_optimade_cod_data_more_than_5_warning():
+    from cellify.optimade import format_formula_structures
+    mp_data = []
+    cod_data = [
+        {"id": f"cod-{i}", "attributes": {"chemical_formula_descriptive": "Si"}}
+        for i in range(1, 7)
+    ]
+    summary, selection_map = format_formula_structures(mp_data, cod_data, "Si")
+    assert "Warning: Only the top 5 most relevant structures are shown." in summary
+    assert "There are 1 more structures in Crystallography Open Database (COD)." in summary
+    assert len(selection_map) == 5
+
+
+def test_optimade_download_structure_failures():
+    from cellify.optimade import download_structure_from_entry
+    import pytest
+    from unittest.mock import patch
+
+    with pytest.raises(ValueError, match="Failed to parse structure from Materials Project attributes."):
+        download_structure_from_entry("Materials Project", {"id": "mp-1", "attributes": {}})
+
+    with pytest.raises(ValueError, match="COD entry has no ID."):
+        download_structure_from_entry("Crystallography Open Database (COD)", {"attributes": {}})
+
+    class MockResponse:
+        def __init__(self, status_code):
+            self.status_code = status_code
+    with patch("requests.get", return_value=MockResponse(404)):
+        with pytest.raises(RuntimeError, match="Failed to download CIF from COD: status 404"):
+            download_structure_from_entry("Crystallography Open Database (COD)", {"id": "12345"})
