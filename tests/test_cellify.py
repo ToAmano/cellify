@@ -15,6 +15,7 @@ from cellify.core import (
     generate_surface_slab,
     load_structure_file,
     parse_matrix_string,
+    run_cellify_pipeline,
     save_structure_file,
     scale_structure_volume,
     scale_structure_lattice,
@@ -1697,3 +1698,9 @@ def test_optimade_download_structure_failures():
     with patch("requests.get", return_value=MockResponse(404)):
         with pytest.raises(RuntimeError, match="Failed to download CIF from COD: status 404"):
             download_structure_from_entry("Crystallography Open Database (COD)", {"id": "12345"})
+
+
+def test_run_cellify_pipeline_scale_mutually_exclusive(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    with pytest.raises(ValueError, match="Arguments --scale-vol, --scale-lat, and --scale-axes are mutually exclusive."):
+        run_cellify_pipeline(structure, scale_vol=2.0, scale_lat=1.5)

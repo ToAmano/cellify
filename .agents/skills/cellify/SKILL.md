@@ -34,9 +34,9 @@ cellify -i <INPUT_FILE_OR_FORMULA> [OPTIONS] -o <OUTPUT_FILE>
 
 ### Transformation Options
 - `--conventional`: Converts the input structure to its standard conventional cell representation *before* applying supercell scaling or defects.
-- `--scale-vol factor`: Scale the structure's volume by a given factor while preserving angles and length proportions.
-- `--scale-lat factor`: Scale the structure's lattice constants (lattice vectors) by a given factor.
-- `--scale-axes fa fb fc`: Scale the individual lattice vectors (axes) by three factors (fa, fb, fc).
+- `--scale-vol factor`: Scale the structure's volume by a given factor while preserving angles and length proportions (mutually exclusive with `--scale-lat` and `--scale-axes`).
+- `--scale-lat factor`: Scale the structure's lattice constants (lattice vectors) by a given factor (mutually exclusive with `--scale-vol` and `--scale-axes`).
+- `--scale-axes fa fb fc`: Scale the individual lattice vectors (axes) by three factors (fa, fb, fc) (mutually exclusive with `--scale-vol` and `--scale-lat`).
 - `-d, --dim nx ny nz`: Diagonal scaling factors for the supercell (e.g., `-d 2 2 2`).
 - `-m, --matrix MATRIX`: 3x3 transformation matrix (e.g., `'2,0,0,0,2,0,0,0,2'`).
 - `--min-dist DISTANCE`: Automatically scales the supercell so that the minimum periodic distance is >= DISTANCE (default is 10.0 Å if no other supercell option is specified).

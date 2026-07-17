@@ -6,6 +6,7 @@ import os
 import shutil
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 pytest.importorskip("mcp")
@@ -91,7 +92,6 @@ def test_mcp_scaling(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None
     """
     Tests the cellify tool with new scaling parameters.
     """
-    import numpy as np
     # 1. Volume scaling
     out_file_vol = os.path.join(tmp_path, "POSCAR_scale_vol")
     res_vol = cellify(poscar_path, scale_vol=2.0, output_path=out_file_vol)

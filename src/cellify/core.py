@@ -518,10 +518,14 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
     thick: Optional[float] = None,
     vacuum: Optional[float] = None,
 ) -> Tuple[Structure, str]:
-    """
-    Runs the entire modeling pipeline on the structure, capturing all console
-    outputs and returning the final structure along with the captured log string.
-    """
+    # Check that scaling arguments are mutually exclusive
+    scaling_args: List[Any] = [scale_vol, scale_lat, scale_axes]
+    non_none_scaling_args: List[Any] = [arg for arg in scaling_args if arg is not None]
+    if len(non_none_scaling_args) > 1:
+        raise ValueError(
+            "Arguments --scale-vol, --scale-lat, and --scale-axes are mutually exclusive."
+        )
+
     log_stream: io.StringIO = io.StringIO()
     with contextlib.redirect_stdout(log_stream):
         # 1. Conventional cell conversion
