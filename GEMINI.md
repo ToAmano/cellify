@@ -37,10 +37,12 @@ All Python modules under `src/cellify/` must have **complete type annotations** 
 ### ② Parameter Preservation (Plain-Text Substitution)
 To prevent parse errors or accidental default overwrites (such as `K_POINTS None` introduction) in mixed-format calculations like Quantum ESPRESSO, adapters must keep calculation parameters (namelists, comments, formatting) in plain text and only modify parameters like `nat` and `ntyp` using regex matching. This is referred to as the `text_replace` engine.
 
-### ③ Modular Architecture (Separation of I/O Adapters and Core)
+### ③ Modular Architecture (Separation of I/O Adapters, Client API, and Core)
 To keep the codebase maintainable and open for future DFT software additions:
 *   **`adapters` Package**: Any format-specific file reading/writing (and parameter-preserving text substitutions) must be encapsulated under adapters inheriting the abstract `BaseAdapter` class (e.g., `EspressoAdapter`, `StandardAdapter`).
-*   **`core` Module**: Structural manipulation logic (supercells, defects, slabs) must be written as modular, pure-like functions that receive a `Structure` and return a modified `Structure` without being aware of input/output files.
+*   **`optimade` Module**: Querying and formatting logic for external APIs (Materials Project, COD) must live inside `src/cellify/optimade.py` to keep the core structure engine decoupled from networking concerns.
+*   **`core` Module**: Structural manipulation logic (supercells, defects, slabs) must be written as modular, pure-like functions that receive a `Structure` and return a modified `Structure` without being aware of input/output files or API clients.
+*   **String Return Convention for API Queries**: Functions executing external API queries (such as `retrieve_cif_by_formula`) must construct and return the formatted results as a string (`str`) rather than printing to stdout (`print`). This ensures that the results can be utilized consistently by both the CLI (`cli.py` prints the returned string) and the Model Context Protocol (MCP) server (`mcp.py` returns the string as tool output).
 *   **Future Modulations**: The core logic remains in a single `core.py` for simplicity now, but is kept decoupled so it can be easily split into a `core/` package when the number of features increases.
 
 ### ④ Branch Management and PR Lifecycle

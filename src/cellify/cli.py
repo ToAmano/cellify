@@ -6,7 +6,9 @@ Handles arg parsing, workflow orchestration, and user output reporting.
 import argparse
 import os
 import sys
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+from pymatgen.core import Structure
 
 from cellify import __version__
 from cellify.core import (
@@ -37,6 +39,11 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         "--input",
         required=True,
         help="Input structure file path (e.g. POSCAR, input.cif, qe.in, qe.out)",
+    )
+    parser.add_argument(
+        "--select",
+        type=int,
+        help="1-based index to select a structure from query results (non-interactive).",
     )
     parser.add_argument(
         "-o",
@@ -146,16 +153,80 @@ def main() -> None:  # noqa: C901,CCR001
     """
     args: argparse.Namespace = parse_args()
 
-    if not os.path.exists(args.input):
-        print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
-        sys.exit(1)
+    structure: Structure
+    meta_data: Dict[str, Any]
 
-    print(f"Loading structure from: {args.input}")
-    try:
-        structure, meta_data = load_structure_file(args.input)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"Error loading file: {e}", file=sys.stderr)
-        sys.exit(1)
+    if not os.path.exists(args.input):
+        # Fallback detection: If the input file does not exist and has no path separator
+        # or extension, we treat it as a chemical formula and query external databases
+        # via OPTIMADE API.
+        if "/" not in args.input and "\\" not in args.input and "." not in args.input:
+            from cellify.optimade import select_and_download_structure
+
+            formula = args.input
+
+            def cli_prompt(summary: str, limit: int) -> int:
+                """Handles interactive user inputs from stdout/stdin and validates the choice index.
+
+                Displays the search results summary and prompts the user to enter a
+                valid 1-based index corresponding to a candidate structure.
+                """
+                print(summary)
+                try:
+                    choice_str = input(f"Select a structure (1-{limit}): ").strip()
+                    if not choice_str:
+                        raise ValueError("Invalid selection.")
+                    choice = int(choice_str)
+                    if not 1 <= choice <= limit:
+                        raise ValueError("Invalid selection.")
+                    return choice
+                except (KeyboardInterrupt, EOFError):
+                    print()
+                    raise ValueError("Invalid selection.") from None
+                except ValueError:
+                    raise ValueError("Invalid selection.") from None
+
+            # Selection mode configuration: If the user specified a selection index via
+            # --select, it directly determines the structure to download. Otherwise,
+            # we trigger the interactive prompt selection only if we are in a TTY environment.
+            interactive_prompt = cli_prompt if sys.stdin.isatty() else None
+
+            try:
+                db_name: str
+                entry: Dict[str, Any]
+                summary: str
+                structure, db_name, entry, summary = select_and_download_structure(
+                    formula,
+                    select=args.select,
+                    interactive_prompt=interactive_prompt,
+                )
+            except ValueError as e:
+                summary = getattr(e, "summary", "")
+                if summary:
+                    print(summary)
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"Error downloading structure: {e}", file=sys.stderr)
+                sys.exit(1)
+
+            if args.select is not None:
+                print(summary)
+
+            print(f"Downloading structure from {db_name} (ID: {entry.get('id')})...")
+            entry_id = entry.get("id", "unknown")
+            args.input = f"{formula}_{entry_id}.cif"
+            meta_data = {}
+        else:
+            print(f"Error: Input file '{args.input}' not found.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print(f"Loading structure from: {args.input}")
+        try:
+            structure, meta_data = load_structure_file(args.input)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Error loading file: {e}", file=sys.stderr)
+            sys.exit(1)
 
     print(get_structure_summary(structure))
 
@@ -215,7 +286,7 @@ def main() -> None:  # noqa: C901,CCR001
             print(f"Error launching WebGL viewer: {e}", file=sys.stderr)
             try:
                 print("Attempting to fall back to ASE native GUI viewer...")
-                import _tkinter  # noqa: F401 # pylint: disable=unused-import
+                import _tkinter  # noqa: F401 # pylint: disable=unused-import,import-error
                 from ase.visualize import view
                 from pymatgen.io.ase import AseAtomsAdaptor
 

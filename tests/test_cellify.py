@@ -336,6 +336,246 @@ def test_cli_main_missing_file():
         assert excinfo.value.code == 1
 
 
+def test_cli_main_formula_query(capsys, tmp_path):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {
+                        "gga_gga+u": {"energy_above_hull": 0.0}
+                    },
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            },
+            {
+                "id": "mp-9999",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": "N/A"},
+                    "lattice_vectors": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0]],
+                    "species_at_sites": ["Si"],
+                },
+            },
+            {
+                "id": "mp-1000",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.05},
+                },
+            },
+            {
+                "id": "mp-9998",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": "invalid-stability-type",
+                },
+            },
+            {
+                "id": "mp-2000",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.10},
+                },
+            },
+            {
+                "id": "mp-3000",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.15},
+                },
+            },
+        ]
+    }
+    mock_cod_response = {
+        "data": [
+            {
+                "id": "1526655",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_cod_sg": "F d -3 m :1",
+                    "_cod_vol": 160.0,
+                    "_cod_a": 5.43,
+                    "_cod_b": 5.43,
+                    "_cod_c": 5.43,
+                    "_cod_commonname": "Silicon",
+                    "_cod_chemname": "Silicon",
+                    "_cod_mineral": "Silicon mineral",
+                },
+            },
+            {
+                "id": "1526656",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_cod_sg": "F d -3 m",
+                    "_cod_vol": "invalid-vol",
+                    "_cod_a": "invalid-a",
+                    "_cod_b": "invalid-b",
+                    "_cod_c": "invalid-c",
+                },
+            },
+            {
+                "id": "1526657",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_cod_chemname": "Silicon Chem",
+                },
+            },
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self.json_data
+
+        if "materialsproject.org" in url:
+            return MockResponse(mock_mp_response, 200)
+        if "crystallography.net" in url:
+            return MockResponse(mock_cod_response, 200)
+        return MockResponse({}, 404)
+
+    out_file = str(tmp_path / "Si_supercell.cif")
+    with patch("requests.get", side_effect=mock_get):
+        test_args = ["cellify", "-i", "Si", "--select", "1", "-o", out_file]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            main()
+
+    captured = capsys.readouterr()
+    assert "Found 6 structures in Materials Project" in captured.out
+    assert "Warning: Only the top 5 most relevant structures are shown. There are 1 more structures in Materials Project." in captured.out
+    assert "mp-165" in captured.out
+    assert "Space Group: R-3m" in captured.out
+    assert "Volume: 157.46 A^3" in captured.out
+    assert "Lattice: a=5.40, b=5.40, c=5.40 A" in captured.out
+    assert "0.0000 eV/atom [Stable ★]" in captured.out
+    assert "mp-9999" in captured.out
+    assert "N/A eV/atom" in captured.out
+    assert "mp-1000" in captured.out
+    assert "0.0500 eV/atom" in captured.out
+    assert "Querying Crystallography Open Database (COD) OPTIMADE" in captured.out
+    assert "Found 3 structures in Crystallography Open Database (COD)" in captured.out
+    assert "1526655" in captured.out
+    assert "Space Group: F d -3 m :1" in captured.out
+    assert "Volume: 160.00 A^3" in captured.out
+    assert "Lattice: a=5.43, b=5.43, c=5.43 A" in captured.out
+    assert "Name: Silicon, Silicon mineral" in captured.out
+    assert "1526656" in captured.out
+    assert "Volume: invalid-vol A^3" in captured.out
+    assert "Lattice: a=invalid-a, b=invalid-b, c=invalid-c A" in captured.out
+
+
+def test_cli_main_formula_query_sg_error(capsys, tmp_path):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"energy_above_hull": 0.0},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+
+            def json(self):
+                return self.json_data
+
+        return MockResponse(mock_mp_response, 200)
+
+    out_file = str(tmp_path / "Si_supercell.cif")
+    with patch("requests.get", side_effect=mock_get):
+        with patch("cellify.optimade.SpacegroupAnalyzer", side_effect=RuntimeError("spglib error")):
+            test_args = ["cellify", "-i", "Si", "--select", "1", "-o", out_file]
+            with patch("sys.argv", test_args):
+                from cellify.cli import main
+                main()
+
+    captured = capsys.readouterr()
+    assert "Querying Materials Project OPTIMADE" in captured.out
+    assert "Space Group" not in captured.out
+    assert "Volume: 157.46 A^3" in captured.out
+
+
+def test_cli_main_formula_query_status_non_200(capsys):
+    def mock_get_error(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, status_code):
+                self.status_code = status_code
+
+            def json(self):
+                return {}
+
+        return MockResponse(500)
+
+    with patch("requests.get", side_effect=mock_get_error):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Found 0 structures in Materials Project" in captured.out
+    assert "Found 0 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Error: No structures found for formula 'Si'." in captured.err
+
+
+def test_cli_main_formula_query_error(capsys):
+    def mock_get_error(url, *args, **kwargs):
+        raise RuntimeError("Connection timed out")
+
+    with patch("requests.get", side_effect=mock_get_error):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Found 0 structures in Materials Project" in captured.out
+    assert "Found 0 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Error: No structures found for formula 'Si'." in captured.err
+
+
+def test_cli_main_formula_query_invalid_formula(capsys):
+    def mock_get_error(url, *args, **kwargs):
+        raise RuntimeError("early exit")
+
+    with patch("requests.get", side_effect=mock_get_error):
+        test_args = ["cellify", "-i", "invalid-formula-123!"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Found 0 structures in Materials Project" in captured.out
+    assert "Found 0 structures in Crystallography Open Database (COD)" in captured.out
+    assert "Error: No structures found for formula 'invalid-formula-123!'." in captured.err
+
+
 def test_cli_main_invalid_matrix(poscar_path):
     test_args = ["cellify", "-i", poscar_path, "--matrix", "1 0 / 0 1"]
     with patch("sys.argv", test_args):
@@ -887,3 +1127,443 @@ def test_cli_show_indices(poscar_path, tmp_path, capsys):
     assert "Cartesian (x, y, z)" in captured.out
     assert "0      Si" in captured.out
     assert "Total: 2 atoms" in captured.out
+
+
+def test_granular_optimade_query_and_download():
+    # 1. Test imports
+    from cellify.optimade import (
+        query_formula_structures,
+        format_formula_structures,
+        download_structure_from_entry,
+    )
+
+    # Mock data for Materials Project (MP)
+    mock_mp_data = [
+        {
+            "id": "mp-123",
+            "attributes": {
+                "chemical_formula_descriptive": "Si",
+                "_mp_stability": {"energy_above_hull": 0.0},
+                "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                "species_at_sites": ["Si", "Si"],
+            },
+        }
+    ]
+
+    # Mock data for Crystallography Open Database (COD)
+    mock_cod_data = [
+        {
+            "id": "1000000",
+            "attributes": {
+                "chemical_formula_descriptive": "Si",
+                "_cod_sg": "Fd-3m",
+                "_cod_vol": 160.0,
+                "_cod_a": 5.43,
+                "_cod_b": 5.43,
+                "_cod_c": 5.43,
+                "_cod_commonname": "Silicon",
+            },
+        }
+    ]
+
+    # Mock requests.get
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, text_or_json, status_code):
+                self.text_or_json = text_or_json
+                self.status_code = status_code
+
+            def json(self):
+                return self.text_or_json
+
+            @property
+            def text(self):
+                return self.text_or_json
+
+        if "materialsproject.org" in url:
+            return MockResponse({"data": mock_mp_data}, 200)
+        elif "crystallography.net/cod/optimade" in url:
+            return MockResponse({"data": mock_cod_data}, 200)
+        elif "crystallography.net/cod/1000000.cif" in url:
+            # Return dummy CIF text
+            cif_text = """data_global
+_cell_length_a 5.43
+_cell_length_b 5.43
+_cell_length_c 5.43
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+_space_group_symop_operation_xyz
+'x,y,z'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si 0 0 0
+"""
+            return MockResponse(cif_text, 200)
+        return MockResponse("Not Found", 404)
+
+    with patch("requests.get", side_effect=mock_get):
+        # 2. Test query
+        mp_res, cod_res = query_formula_structures("Si")
+        assert len(mp_res) == 1
+        assert mp_res[0]["id"] == "mp-123"
+        assert len(cod_res) == 1
+        assert cod_res[0]["id"] == "1000000"
+
+        # 3. Test formatting
+        formatted_str, selection_map = format_formula_structures(mp_res, cod_res, "Si")
+        assert "Found 1 structures in Materials Project" in formatted_str
+        assert "Found 1 structures in Crystallography Open Database (COD)" in formatted_str
+        assert "[1] ID: mp-123" in formatted_str
+        assert "[2] ID: 1000000" in formatted_str
+
+        assert 1 in selection_map
+        assert selection_map[1] == ("Materials Project", mp_res[0])
+        assert 2 in selection_map
+        assert selection_map[2] == ("Crystallography Open Database (COD)", cod_res[0])
+
+        # 4. Test download structure
+        struct_mp = download_structure_from_entry("Materials Project", mp_res[0])
+        assert isinstance(struct_mp, Structure)
+        assert len(struct_mp) == 2
+        assert set(struct_mp.symbol_set) == {"Si"}
+
+        struct_cod = download_structure_from_entry("Crystallography Open Database (COD)", cod_res[0])
+        assert isinstance(struct_cod, Structure)
+        assert len(struct_cod) == 1
+        assert set(struct_cod.symbol_set) == {"Si"}
+
+        # 5. Test download structure with unsupported database name
+        import pytest
+        with pytest.raises(ValueError, match="Unsupported database name: UnknownDB"):
+            download_structure_from_entry("UnknownDB", mp_res[0])
+
+
+def test_select_and_download_structure():
+    from cellify.optimade import select_and_download_structure, SelectionError
+    from unittest.mock import patch, MagicMock
+    from pymatgen.core import Structure
+
+    # Dummy Structure
+    dummy_structure = Structure([[1,0,0],[0,1,0],[0,0,1]], ["Si"], [[0,0,0]])
+    dummy_entry = {"id": "mp-1"}
+
+    mock_mp = [dummy_entry]
+    mock_cod = []
+
+    # 1. Test success with select
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)) as mock_query, \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})) as mock_format, \
+         patch("cellify.optimade.download_structure_from_entry", return_value=dummy_structure) as mock_download:
+
+        struct, db, entry, summary = select_and_download_structure("Si", select=1)
+        assert struct == dummy_structure
+        assert db == "Materials Project"
+        assert entry == dummy_entry
+        assert summary == "summary"
+        mock_query.assert_called_once_with("Si")
+        mock_format.assert_called_once_with(mock_mp, mock_cod, "Si")
+        mock_download.assert_called_once_with("Materials Project", dummy_entry)
+
+    # 2. Test success with interactive callback
+    mock_prompt = MagicMock(return_value=1)
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})), \
+         patch("cellify.optimade.download_structure_from_entry", return_value=dummy_structure):
+
+        struct, db, entry, summary = select_and_download_structure("Si", interactive_prompt=mock_prompt)
+        assert struct == dummy_structure
+        assert db == "Materials Project"
+        assert entry == dummy_entry
+        assert summary == "summary"
+        mock_prompt.assert_called_once_with("summary", 1)
+
+    # 3. Test no structures found
+    with patch("cellify.optimade.query_formula_structures", return_value=([], [])), \
+         patch("cellify.optimade.format_formula_structures", return_value=("empty_summary", {})):
+        with pytest.raises(SelectionError, match="No structures found for formula 'Si'.") as excinfo:
+            select_and_download_structure("Si", select=1)
+        assert excinfo.value.summary == "empty_summary"
+
+    # 4. Test no select or interactive_prompt provided
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})):
+        with pytest.raises(SelectionError, match="Chemical formula specified, but the session is non-interactive") as excinfo:
+            select_and_download_structure("Si")
+        assert excinfo.value.summary == "summary"
+
+    # 5. Test selection index out of range
+    with patch("cellify.optimade.query_formula_structures", return_value=(mock_mp, mock_cod)), \
+         patch("cellify.optimade.format_formula_structures", return_value=("summary", {1: ("Materials Project", dummy_entry)})):
+        with pytest.raises(SelectionError, match="Selection index 2 is out of range.") as excinfo:
+            select_and_download_structure("Si", select=2)
+        assert excinfo.value.summary == "summary"
+
+
+def test_cli_main_formula_query_select_out_of_range(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        test_args = ["cellify", "-i", "Si", "--select", "99"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Selection index 99 is out of range." in captured.err
+
+
+def test_cli_main_formula_query_non_interactive_no_select(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        test_args = ["cellify", "-i", "Si"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Chemical formula specified, but the session is non-interactive" in captured.err
+
+
+def test_cli_main_formula_query_interactive_select(capsys, tmp_path):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    out_file = str(tmp_path / "Si_supercell.cif")
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value="1"):
+                test_args = ["cellify", "-i", "Si", "-o", out_file]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    main()
+
+    captured = capsys.readouterr()
+    assert "Downloading structure from Materials Project (ID: mp-165)..." in captured.out
+    assert os.path.exists(out_file)
+
+
+def test_cli_main_formula_query_interactive_select_invalid(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    # test invalid choice input
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value="invalid_choice"):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err
+
+    # test out of range choice input
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value="5"):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err
+
+    # test empty choice input
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value=""):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err
+
+
+def test_cli_main_formula_query_interactive_keyboard_interrupt(capsys):
+    mock_mp_response = {
+        "data": [
+            {
+                "id": "mp-165",
+                "attributes": {
+                    "chemical_formula_descriptive": "Si",
+                    "_mp_stability": {"gga_gga+u": {"energy_above_hull": 0.0}},
+                    "lattice_vectors": [[5.4, 0.0, 0.0], [0.0, 5.4, 0.0], [0.0, 0.0, 5.4]],
+                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
+                    "species_at_sites": ["Si", "Si"],
+                },
+            }
+        ]
+    }
+    def mock_get(url, *args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
+            def json(self):
+                return self.json_data
+        return MockResponse(mock_mp_response, 200)
+
+    with patch("requests.get", side_effect=mock_get):
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", side_effect=KeyboardInterrupt):
+                test_args = ["cellify", "-i", "Si"]
+                with patch("sys.argv", test_args):
+                    from cellify.cli import main
+                    with pytest.raises(SystemExit) as excinfo:
+                        main()
+                    assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error: Invalid selection." in captured.err
+
+
+def test_cli_main_formula_query_general_download_error(capsys):
+    with patch("cellify.optimade.select_and_download_structure", side_effect=RuntimeError("Some network error")):
+        test_args = ["cellify", "-i", "Si", "--select", "1"]
+        with patch("sys.argv", test_args):
+            from cellify.cli import main
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 1
+
+    captured = capsys.readouterr()
+    assert "Error downloading structure: Some network error" in captured.err
+
+
+def test_optimade_cod_data_more_than_5_warning():
+    from cellify.optimade import format_formula_structures
+    mp_data = []
+    cod_data = [
+        {"id": f"cod-{i}", "attributes": {"chemical_formula_descriptive": "Si"}}
+        for i in range(1, 7)
+    ]
+    summary, selection_map = format_formula_structures(mp_data, cod_data, "Si")
+    assert "Warning: Only the top 5 most relevant structures are shown." in summary
+    assert "There are 1 more structures in Crystallography Open Database (COD)." in summary
+    assert len(selection_map) == 5
+
+
+def test_optimade_download_structure_failures():
+    from cellify.optimade import download_structure_from_entry
+    import pytest
+    from unittest.mock import patch
+
+    with pytest.raises(ValueError, match="Failed to parse structure from Materials Project attributes."):
+        download_structure_from_entry("Materials Project", {"id": "mp-1", "attributes": {}})
+
+    with pytest.raises(ValueError, match="COD entry has no ID."):
+        download_structure_from_entry("Crystallography Open Database (COD)", {"attributes": {}})
+
+    class MockResponse:
+        def __init__(self, status_code):
+            self.status_code = status_code
+    with patch("requests.get", return_value=MockResponse(404)):
+        with pytest.raises(RuntimeError, match="Failed to download CIF from COD: status 404"):
+            download_structure_from_entry("Crystallography Open Database (COD)", {"id": "12345"})

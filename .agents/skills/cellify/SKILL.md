@@ -9,8 +9,9 @@ This skill guides you in using `cellify` to manipulate crystal structure files (
 
 ## 1. When to Use This Skill
 Use this skill when you need to perform the following structure-building tasks:
+- **Structure Retrieval**: Search and list crystal structure candidates from public databases (Materials Project and COD) by chemical formula using OPTIMADE.
 - **Conventionalization**: Convert primitive/arbitrary unit cells to standard conventional cells (`--conventional`).
-- **Supercell Generation**: Build larger periodic structures (`--supercell` or `-s`) from a unit cell.
+- **Supercell Generation**: Build larger periodic structures using diagonal scaling factors (`-d`/`--dim`), a transformation matrix (`-m`/`--matrix`), or target minimum periodic distance (`--min-dist`).
 - **Vacancy / Defect Builder**: Remove (`--vacancy` or `-v`) or substitute (`--doping` or `-d`) atoms to model defects or dopants.
 - **Slab Cutting**: Create 2D surface slabs (`--slab`) with custom Miller indices, thickness, and vacuum space.
 - **Index Mapping Inspection**: Show mapping of absolute atomic indices to element types and coordinates (`--show-indices`).
@@ -21,21 +22,21 @@ Use this skill when you need to perform the following structure-building tasks:
 
 The CLI syntax is:
 ```bash
-cellify -i <INPUT_FILE> [OPTIONS] -o <OUTPUT_FILE>
+cellify -i <INPUT_FILE_OR_FORMULA> [OPTIONS] -o <OUTPUT_FILE>
 ```
 
 ### Main Options
-- `-i, --input PATH`: Path to the input structure file (formats: VASP `POSCAR`/`CONTCAR`, `*.cif`, or Quantum ESPRESSO `*.in`).
+- `-i, --input PATH_OR_FORMULA`: Path to the input structure file (formats: VASP `POSCAR`/`CONTCAR`, `*.cif`, or Quantum ESPRESSO `*.in`). If the file does not exist, it is interpreted as a chemical formula (e.g. `Si`, `TiO2`, `H3S`), and `cellify` queries public OPTIMADE servers to search and display available crystal structures.
+- `--select INDEX`: 1-based index to select a structure from query results non-interactively (when `-i`/`--input` is a chemical formula).
 - `-o, --output PATH`: Path to write the output structure file (format auto-detected by extension/filename).
 - `-w, --view`: Opens the 3D WebGL viewer in your default browser.
 - `--show-indices`: Dumps a neat table of absolute 0-based atomic indices, elements, fractional, and Cartesian coordinates to stdout, then exits.
 
 ### Transformation Options
 - `--conventional`: Converts the input structure to its standard conventional cell representation *before* applying supercell scaling or defects.
-- `-s, --supercell DIM`: Generates a supercell. `DIM` can be:
-  - Three integers (e.g. `2 2 2`) for simple diagonal scaling.
-  - A matrix string of 9 comma-separated integers (e.g. `2,0,0,0,2,0,0,0,2` representing the scaling matrix rows).
-  - *If omitted*, `cellify` automatically scales the supercell based on a target minimum periodic distance (default is 10.0 Å).
+- `-d, --dim nx ny nz`: Diagonal scaling factors for the supercell (e.g., `-d 2 2 2`).
+- `-m, --matrix MATRIX`: 3x3 transformation matrix (e.g., `'2,0,0,0,2,0,0,0,2'`).
+- `--min-dist DISTANCE`: Automatically scales the supercell so that the minimum periodic distance is >= DISTANCE (default is 10.0 Å if no other supercell option is specified).
 - `-v, --vacancy RULES`: Removes atoms. Rules can be:
   - Element and count: `<Element>:<Count>` (e.g., `Si:2` - deletes the first 2 Si atoms).
   - Element and absolute indices: `<Element>:<index1>,<index2>,...` (e.g., `Si:0,4` - deletes Si atoms at absolute indices 0 and 4).
@@ -70,21 +71,52 @@ When working with Quantum ESPRESSO `*.in` files:
 
 ## 4. Practical Examples
 
-### Example 1: Create a 2x2x2 Supercell of Silicon
+### Example 1: Search and Download Crystal Structure Candidates by Chemical Formula
 ```bash
-cellify -i POSCAR -s 2 2 2 -o POSCAR_222
+# Non-interactively select the 1st structure from the query results for TiO2 and save it
+cellify -i TiO2 --select 1 -o TiO2_entry.cif
+
+# Omitting --select triggers interactive selection (if running in a TTY environment)
+cellify -i TiO2 -o TiO2_interactive.cif
 ```
 
-### Example 2: Inspect Indices of a Slab Model
+### Example 2: Create a 2x2x2 Supercell of Silicon
+```bash
+cellify -i POSCAR -d 2 2 2 -o POSCAR_222
+```
+
+### Example 3: Inspect Indices of a Slab Model
 ```bash
 cellify -i qe.in --conventional --slab 1,1,1,3,15 --show-indices
 ```
 
-### Example 3: Create a Doped Divacancy Model in 3C-SiC
+### Example 4: Create a Doped Divacancy Model in 3C-SiC
 ```bash
 # 1. Convert to conventional cell, scale, and print indices to locate C atoms
-cellify -i POSCAR --conventional -s 2 2 2 --show-indices
+cellify -i POSCAR --conventional -d 2 2 2 --show-indices
 
 # 2. Re-run to delete Si at index 0 and C at index 32
-cellify -i POSCAR --conventional -s 2 2 2 -v Si:0 -v C:32 -o POSCAR_divacancy
+cellify -i POSCAR --conventional -d 2 2 2 -v Si:0 -v C:32 -o POSCAR_divacancy
 ```
+
+---
+
+## 5. MCP Server Tool Reference
+
+`cellify` exposes a FastMCP tool named `cellify` for agentic use.
+
+### Arguments:
+- `input_path` (string): Path to input file or chemical formula.
+- `output_path` (string, optional): Output filepath.
+- `select` (integer, optional): 1-based index to select a candidate structure non-interactively when querying by formula.
+- `conventional` (boolean): Conventionalize unit cell first.
+- `dim` (array of integers, optional): Diagonal supercell dimension (e.g., `[2, 2, 2]`).
+- `matrix` (string, optional): Scaling matrix.
+- `min_dist` (number, optional): Minimum periodic distance target.
+- `substitute` (array of strings, optional): Doping/substitution rules.
+- `vacancy_index` (array of strings, optional): Vacancy by index rules.
+- `vacancy_count` (array of strings, optional): Vacancy by count rules.
+- `slab` (array of integers, optional): Slab Miller indices (e.g. `[1, 1, 1]`).
+- `thick` (number, optional): Slab thickness.
+- `vacuum` (number, optional): Vacuum size.
+- `show_indices` (boolean): Show index mapping.

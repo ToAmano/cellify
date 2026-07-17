@@ -7,6 +7,7 @@ This directory contains practical examples to demonstrate how to use `cellify` f
 2. [Quantum ESPRESSO Parameter Preservation (qe.in)](./2_espresso_doping)
 3. [Primitive to Conventional Cell Conversion (POSCAR_primitive)](./3_primitive_to_conventional)
 4. [3C-SiC Primitive-to-Conventional Supercell (3csic.in)](./4_espresso_supercell)
+5. [Retrieve Crystal Structures by Chemical Formula (OPTIMADE)](./5_retrieve_by_formula)
 
 ---
 
@@ -31,6 +32,10 @@ bash run.sh
 
 # Example 4: 3C-SiC QE Conversion & Supercell
 cd ../4_espresso_supercell
+bash run.sh
+
+# Example 5: Retrieve Crystal Structures by Chemical Formula
+cd ../5_retrieve_by_formula
 bash run.sh
 ```
 

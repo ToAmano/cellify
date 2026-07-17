@@ -41,6 +41,7 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     thick: Optional[float] = None,
     vacuum: Optional[float] = None,
     show_indices: bool = False,
+    select: Optional[int] = None,
 ) -> str:
     """
     All-in-one crystal structure modeling tool for cellify.
@@ -63,19 +64,50 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
         thick: Slab thickness in Angstroms or layers (required if slab is specified).
         vacuum: Vacuum layer thickness in Angstroms (required if slab is specified).
         show_indices: Print absolute atomic indices and coordinate mapping.
+        select: 1-based index to select a structure from query results non-interactively.
     """
-    if not os.path.exists(input_path):
-        return f"Error: Input file '{input_path}' not found."
-
     log: List[str] = []
-    log.append(f"Loading structure from: {input_path}")
+    structure: Structure
+    meta_data: Dict[str, Any]
 
-    try:
-        structure: Structure
-        meta_data: Dict[str, Any]
-        structure, meta_data = load_structure_file(input_path)
-    except Exception as e:
-        return f"Error loading file: {str(e)}"
+    if not os.path.exists(input_path):
+        if "/" not in input_path and "\\" not in input_path and "." not in input_path:
+            from cellify.optimade import (
+                SelectionError,
+                retrieve_cif_by_formula,
+                select_and_download_structure,
+            )
+
+            if select is None:
+                try:
+                    return retrieve_cif_by_formula(input_path)
+                except Exception as e:
+                    return f"Error querying formula: {str(e)}"
+
+            try:
+                db_name: str
+                entry: Dict[str, Any]
+                structure, db_name, entry, _ = select_and_download_structure(
+                    input_path, select=select
+                )
+                meta_data = {}
+                entry_id = entry.get("id", "unknown")
+                log.append(f"Downloading structure from {db_name} (ID: {entry_id})...")
+                input_path = f"{input_path}_{entry_id}.cif"
+            except SelectionError as e:
+                return f"Error: {str(e)}\n\n{e.summary}"
+            except ValueError as e:
+                return f"Error: {str(e)}"
+            except Exception as e:
+                return f"Error downloading structure: {str(e)}"
+        else:
+            return f"Error: Input file '{input_path}' not found."
+    else:
+        log.append(f"Loading structure from: {input_path}")
+        try:
+            structure, meta_data = load_structure_file(input_path)
+        except Exception as e:
+            return f"Error loading file: {str(e)}"
 
     log.append(get_structure_summary(structure))
 
