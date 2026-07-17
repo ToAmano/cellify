@@ -12,7 +12,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from pymatgen.core import Structure
+from pymatgen.core import Lattice, Structure
 from pymatgen.core.surface import SlabGenerator
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
@@ -430,6 +430,48 @@ def apply_supercell(
         structure.make_supercell([nx, ny, nz])
 
     return structure
+
+
+def scale_structure_volume(structure: Structure, factor: float) -> Structure:
+    """
+    Scales the structure's volume by a given factor while preserving length proportions and angles.
+    """
+    if factor <= 0:
+        raise ValueError("Scaling factor must be positive.")
+    struct_copy: Structure = structure.copy()
+    struct_copy.scale_lattice(structure.volume * factor)
+    return struct_copy
+
+
+def scale_structure_lattice(structure: Structure, factor: float) -> Structure:
+    """
+    Scales the structure's lattice constants (lattice vectors) by a given factor.
+    Fractional coordinates are kept unchanged.
+    """
+    if factor <= 0:
+        raise ValueError("Scaling factor must be positive.")
+    struct_copy: Structure = structure.copy()
+    new_lattice = Lattice(struct_copy.lattice.matrix * factor)
+    struct_copy.lattice = new_lattice
+    return struct_copy
+
+
+def scale_structure_axes(
+    structure: Structure, fa: float, fb: float, fc: float
+) -> Structure:
+    """
+    Scales the individual lattice vectors (axes) of the structure by factors fa, fb, and fc.
+    Fractional coordinates are kept unchanged.
+    """
+    if fa <= 0 or fb <= 0 or fc <= 0:
+        raise ValueError("All scaling factors must be positive.")
+    struct_copy: Structure = structure.copy()
+    matrix = np.array(struct_copy.lattice.matrix)
+    matrix[0] *= fa
+    matrix[1] *= fb
+    matrix[2] *= fc
+    struct_copy.lattice = Lattice(matrix)
+    return struct_copy
 
 
 def apply_defects_and_slab(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-positional-arguments

@@ -16,6 +16,9 @@ from cellify.core import (
     load_structure_file,
     parse_matrix_string,
     save_structure_file,
+    scale_structure_volume,
+    scale_structure_lattice,
+    scale_structure_axes,
 )
 
 
@@ -216,6 +219,82 @@ def test_generate_surface_slab_errors(poscar_path):
     # Invalid Miller index
     with pytest.raises(ValueError):
         generate_surface_slab(structure, [0, 0, 0], 5.0, 10.0)
+
+
+def test_scale_structure_volume(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    orig_vol = structure.volume
+    orig_frac = [site.frac_coords.copy() for site in structure]
+
+    # Test scaling by 2.0
+    scaled = scale_structure_volume(structure, 2.0)
+    assert np.isclose(scaled.volume, orig_vol * 2.0)
+    # Check that original structure is unchanged
+    assert np.isclose(structure.volume, orig_vol)
+
+    # Check fractional coords are preserved
+    for s_site, orig_fc in zip(scaled, orig_frac):
+        assert np.allclose(s_site.frac_coords, orig_fc)
+
+    # Test scaling by 0.5
+    scaled2 = scale_structure_volume(structure, 0.5)
+    assert np.isclose(scaled2.volume, orig_vol * 0.5)
+
+    # Test error cases
+    with pytest.raises(ValueError, match="Scaling factor must be positive."):
+        scale_structure_volume(structure, 0.0)
+    with pytest.raises(ValueError, match="Scaling factor must be positive."):
+        scale_structure_volume(structure, -1.0)
+
+
+def test_scale_structure_lattice(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    orig_lattice_matrix = np.array(structure.lattice.matrix)
+    orig_frac = [site.frac_coords.copy() for site in structure]
+
+    # Test scaling lattice constant by 1.5
+    scaled = scale_structure_lattice(structure, 1.5)
+    assert np.allclose(scaled.lattice.matrix, orig_lattice_matrix * 1.5)
+    # Check that original structure is unchanged
+    assert np.allclose(structure.lattice.matrix, orig_lattice_matrix)
+
+    # Check fractional coords are preserved
+    for s_site, orig_fc in zip(scaled, orig_frac):
+        assert np.allclose(s_site.frac_coords, orig_fc)
+
+    # Test error cases
+    with pytest.raises(ValueError, match="Scaling factor must be positive."):
+        scale_structure_lattice(structure, 0.0)
+    with pytest.raises(ValueError, match="Scaling factor must be positive."):
+        scale_structure_lattice(structure, -0.5)
+
+
+def test_scale_structure_axes(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    orig_lattice_matrix = np.array(structure.lattice.matrix)
+    orig_frac = [site.frac_coords.copy() for site in structure]
+
+    # Scale specific axes: a by 1.5, b by 2.0, c by 3.0
+    scaled = scale_structure_axes(structure, 1.5, 2.0, 3.0)
+
+    expected_matrix = orig_lattice_matrix.copy()
+    expected_matrix[0] *= 1.5
+    expected_matrix[1] *= 2.0
+    expected_matrix[2] *= 3.0
+
+    assert np.allclose(scaled.lattice.matrix, expected_matrix)
+    # Check that original structure is unchanged
+    assert np.allclose(structure.lattice.matrix, orig_lattice_matrix)
+
+    # Check fractional coords are preserved
+    for s_site, orig_fc in zip(scaled, orig_frac):
+        assert np.allclose(s_site.frac_coords, orig_fc)
+
+    # Test error cases
+    with pytest.raises(ValueError, match="All scaling factors must be positive."):
+        scale_structure_axes(structure, 0.0, 1.0, 1.0)
+    with pytest.raises(ValueError, match="All scaling factors must be positive."):
+        scale_structure_axes(structure, 1.0, -1.0, 1.0)
 
 
 # CLI main integration tests
