@@ -1704,3 +1704,27 @@ def test_run_cellify_pipeline_scale_mutually_exclusive(poscar_path):
     structure, _ = load_structure_file(poscar_path)
     with pytest.raises(ValueError, match="Arguments --scale-vol, --scale-lat, and --scale-axes are mutually exclusive."):
         run_cellify_pipeline(structure, scale_vol=2.0, scale_lat=1.5)
+
+
+def test_run_cellify_pipeline_scale_axes_invalid_length(poscar_path):
+    structure, _ = load_structure_file(poscar_path)
+    with pytest.raises(ValueError, match="scale_axes must contain exactly 3 float values."):
+        run_cellify_pipeline(structure, scale_axes=[1.5, 2.0])
+
+    with pytest.raises(ValueError, match="scale_axes must contain exactly 3 float values."):
+        run_cellify_pipeline(structure, scale_axes=[1.5, 2.0, 2.5, 3.0])
+
+
+def test_run_cellify_pipeline_min_dist_with_scaling(poscar_path):
+    # Original Silicon structure has min_dist scaling factors [4, 4, 4] for 10.0 A.
+    structure, _ = load_structure_file(poscar_path)
+
+    # 1. Scale down: lattice vectors are halved.
+    # To satisfy min_dist=10.0 A on the scaled cell, scaling factors must be [7, 7, 7]
+    scaled_down, log_down = run_cellify_pipeline(structure.copy(), scale_lat=0.5, min_dist=10.0)
+    assert "[7, 7, 7]" in log_down
+
+    # 2. Scale up: lattice vectors are doubled.
+    # To satisfy min_dist=10.0 A on the scaled cell, scaling factors must be [2, 2, 2]
+    scaled_up, log_up = run_cellify_pipeline(structure.copy(), scale_lat=2.0, min_dist=10.0)
+    assert "[2, 2, 2]" in log_up

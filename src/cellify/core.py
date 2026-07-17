@@ -451,7 +451,7 @@ def scale_structure_lattice(structure: Structure, factor: float) -> Structure:
     if factor <= 0:
         raise ValueError("Scaling factor must be positive.")
     struct_copy: Structure = structure.copy()
-    new_lattice = Lattice(struct_copy.lattice.matrix * factor)
+    new_lattice: Lattice = Lattice(struct_copy.lattice.matrix * factor)
     struct_copy.lattice = new_lattice
     return struct_copy
 
@@ -466,7 +466,7 @@ def scale_structure_axes(
     if fa <= 0 or fb <= 0 or fc <= 0:
         raise ValueError("All scaling factors must be positive.")
     struct_copy: Structure = structure.copy()
-    matrix = np.array(struct_copy.lattice.matrix)
+    matrix: np.ndarray = np.array(struct_copy.lattice.matrix)
     matrix[0] *= fa
     matrix[1] *= fb
     matrix[2] *= fc
@@ -526,6 +526,9 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
             "Arguments --scale-vol, --scale-lat, and --scale-axes are mutually exclusive."
         )
 
+    if scale_axes is not None and len(scale_axes) != 3:
+        raise ValueError("scale_axes must contain exactly 3 float values.")
+
     log_stream: io.StringIO = io.StringIO()
     with contextlib.redirect_stdout(log_stream):
         # 1. Conventional cell conversion
@@ -533,12 +536,7 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
             print("Converting structure to standard conventional cell...")
             structure = convert_to_conventional(structure)
 
-        # 2. Supercell generation
-        structure = apply_supercell(
-            structure, dim=dim, matrix=matrix, min_dist=min_dist
-        )
-
-        # 2.5. Lattice scaling
+        # 2. Lattice scaling
         if scale_vol is not None:
             print(f"Scaling structure volume by factor: {scale_vol}")
             structure = scale_structure_volume(structure, scale_vol)
@@ -550,7 +548,12 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
             print(f"Scaling structure lattice axes by factors: a={fa}, b={fb}, c={fc}")
             structure = scale_structure_axes(structure, fa, fb, fc)
 
-        # 3. Defects and Slab generation
+        # 3. Supercell generation
+        structure = apply_supercell(
+            structure, dim=dim, matrix=matrix, min_dist=min_dist
+        )
+
+        # 4. Defects and Slab generation
         structure = apply_defects_and_slab(
             structure,
             substitute=substitute,
