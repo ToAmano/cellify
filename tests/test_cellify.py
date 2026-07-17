@@ -397,6 +397,57 @@ def test_cli_main_matrix(poscar_path, tmp_path):
     assert len(structure) == 4
 
 
+def test_cli_main_scale_vol(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    orig_struct, _ = load_structure_file(poscar_path)
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--scale-vol", "2.0"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert np.isclose(structure.volume, orig_struct.volume * 2.0)
+
+
+def test_cli_main_scale_lat(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    orig_struct, _ = load_structure_file(poscar_path)
+    orig_matrix = np.array(orig_struct.lattice.matrix)
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--scale-lat", "1.5"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    assert np.allclose(structure.lattice.matrix, orig_matrix * 1.5)
+
+
+def test_cli_main_scale_axes(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    orig_struct, _ = load_structure_file(poscar_path)
+    orig_matrix = np.array(orig_struct.lattice.matrix)
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--scale-axes", "1.5", "2.0", "3.0"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        main()
+    assert out_file.exists()
+    structure, _ = load_structure_file(str(out_file))
+    expected_matrix = orig_matrix.copy()
+    expected_matrix[0] *= 1.5
+    expected_matrix[1] *= 2.0
+    expected_matrix[2] *= 3.0
+    assert np.allclose(structure.lattice.matrix, expected_matrix)
+
+
+def test_cli_main_scale_mutually_exclusive(poscar_path, tmp_path):
+    out_file = tmp_path / "POSCAR_out"
+    test_args = ["cellify", "-i", poscar_path, "-o", str(out_file), "--scale-vol", "2.0", "--scale-lat", "1.5"]
+    with patch("sys.argv", test_args):
+        from cellify.cli import main
+        with pytest.raises(SystemExit):
+            main()
+
+
 def test_cli_main_qe(qe_path, tmp_path):
     out_file = tmp_path / "qe_out.in"
     test_args = ["cellify", "-i", qe_path, "-o", str(out_file), "-d", "2", "2", "2"]

@@ -34,6 +34,9 @@ cellify -i <INPUT_FILE_OR_FORMULA> [OPTIONS] -o <OUTPUT_FILE>
 
 ### Transformation Options
 - `--conventional`: Converts the input structure to its standard conventional cell representation *before* applying supercell scaling or defects.
+- `--scale-vol factor`: Scale the structure's volume by a given factor while preserving angles and length proportions.
+- `--scale-lat factor`: Scale the structure's lattice constants (lattice vectors) by a given factor.
+- `--scale-axes fa fb fc`: Scale the individual lattice vectors (axes) by three factors (fa, fb, fc).
 - `-d, --dim nx ny nz`: Diagonal scaling factors for the supercell (e.g., `-d 2 2 2`).
 - `-m, --matrix MATRIX`: 3x3 transformation matrix (e.g., `'2,0,0,0,2,0,0,0,2'`).
 - `--min-dist DISTANCE`: Automatically scales the supercell so that the minimum periodic distance is >= DISTANCE (default is 10.0 Å if no other supercell option is specified).
@@ -110,6 +113,9 @@ cellify -i POSCAR --conventional -d 2 2 2 -v Si:0 -v C:32 -o POSCAR_divacancy
 - `output_path` (string, optional): Output filepath.
 - `select` (integer, optional): 1-based index to select a candidate structure non-interactively when querying by formula.
 - `conventional` (boolean): Conventionalize unit cell first.
+- `scale_vol` (number, optional): Scale the structure's volume by a given factor.
+- `scale_lat` (number, optional): Scale the structure's lattice constants by a given factor.
+- `scale_axes` (array of numbers, optional): Scale the individual lattice vectors (axes) by three factors.
 - `dim` (array of integers, optional): Diagonal supercell dimension (e.g., `[2, 2, 2]`).
 - `matrix` (string, optional): Scaling matrix.
 - `min_dist` (number, optional): Minimum periodic distance target.

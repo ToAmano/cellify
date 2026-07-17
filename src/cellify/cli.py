@@ -90,6 +90,26 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         help="Automatically convert the input structure to its standard conventional representation before applying other operations.",
     )
 
+    # Lattice scaling options
+    scale_group = parser.add_mutually_exclusive_group()
+    scale_group.add_argument(
+        "--scale-vol",
+        type=float,
+        help="Scale the structure's volume by a given factor while preserving angles and length proportions.",
+    )
+    scale_group.add_argument(
+        "--scale-lat",
+        type=float,
+        help="Scale the structure's lattice constants (lattice vectors) by a given factor.",
+    )
+    scale_group.add_argument(
+        "--scale-axes",
+        nargs=3,
+        type=float,
+        metavar=("fa", "fb", "fc"),
+        help="Scale the individual lattice vectors (axes) of the structure by factors fa, fb, and fc.",
+    )
+
     # Doping / Defect options
     parser.add_argument(
         "--substitute",
@@ -247,6 +267,9 @@ def main() -> None:  # noqa: C901,CCR001
             dim=args.dim,
             matrix=args.matrix,
             min_dist=args.min_dist,
+            scale_vol=args.scale_vol,
+            scale_lat=args.scale_lat,
+            scale_axes=args.scale_axes,
             substitute=args.substitute,
             vacancy_index=args.vacancy_index,
             vacancy_count=args.vacancy_count,

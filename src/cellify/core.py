@@ -508,6 +508,9 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
     dim: Optional[List[int]] = None,
     matrix: Optional[str] = None,
     min_dist: Optional[float] = None,
+    scale_vol: Optional[float] = None,
+    scale_lat: Optional[float] = None,
+    scale_axes: Optional[List[float]] = None,
     substitute: Optional[List[str]] = None,
     vacancy_index: Optional[List[str]] = None,
     vacancy_count: Optional[List[str]] = None,
@@ -530,6 +533,18 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
         structure = apply_supercell(
             structure, dim=dim, matrix=matrix, min_dist=min_dist
         )
+
+        # 2.5. Lattice scaling
+        if scale_vol is not None:
+            print(f"Scaling structure volume by factor: {scale_vol}")
+            structure = scale_structure_volume(structure, scale_vol)
+        elif scale_lat is not None:
+            print(f"Scaling structure lattice constants by factor: {scale_lat}")
+            structure = scale_structure_lattice(structure, scale_lat)
+        elif scale_axes is not None:
+            fa, fb, fc = scale_axes
+            print(f"Scaling structure lattice axes by factors: a={fa}, b={fb}, c={fc}")
+            structure = scale_structure_axes(structure, fa, fb, fc)
 
         # 3. Defects and Slab generation
         structure = apply_defects_and_slab(

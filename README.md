@@ -59,6 +59,9 @@ cellify -i <input_file> -o <output_file> [options]
 - `-m`, `--matrix` : $3 \times 3$ transformation matrix. Specify row values separated by spaces, rows separated by slashes/commas/semicolons (e.g., `--matrix "1 -1 0 / 1 1 0 / 0 0 2"`).
 - `--min-dist` : Automatically generate a supercell with minimum periodic image distance $\ge$ specified distance (in $\text{Å}$).
 - `--conventional` : Automatically convert the input structure to its standard conventional representation before applying other operations.
+- `--scale-vol` : Scale the structure's volume by a given factor while preserving angles and length proportions.
+- `--scale-lat` : Scale the structure's lattice constants (lattice vectors) by a given factor.
+- `--scale-axes` : Scale the individual lattice vectors (axes) of the structure by three factors. 3 float values separated by spaces (e.g., `--scale-axes 1.05 1.05 1.10`).
 - `--substitute` : Substitution rule. Format: `element:target_element:index_or_percentage` (e.g., `--substitute "Si:P:0"` or `--substitute "Si:Al:5%"`).
 - `--vacancy-index` : Create a vacancy by removing an atom at a specific absolute index. Format: `element:index` (e.g., `--vacancy-index "Si:0"`, `--vacancy-index "C:33"`). (Alias: `--vacancy`).
 - `--vacancy-count` : Create vacancies by randomly removing a specified number of atoms of a given element. Format: `element:count` (e.g., `--vacancy-count "O:2"`_).
@@ -196,6 +199,18 @@ graph TD
 ```bash
 # Non-interactively select index 1 (usually the stable diamond phase of Si) and convert it
 cellify -i Si --select 1 -o Si_conventional.cif --conventional
+```
+
+### 10. Scale the lattice/volume of a structure
+```bash
+# Scale the volume of the structure by 1.10 (increase by 10%)
+cellify -i POSCAR -o POSCAR_scaled_vol --scale-vol 1.10
+
+# Scale the lattice constants (length of lattice vectors) by 1.05 (increase by 5%)
+cellify -i POSCAR -o POSCAR_scaled_lat --scale-lat 1.05
+
+# Scale the lattice axes: a by 1.02, b by 1.02, c by 1.05
+cellify -i POSCAR -o POSCAR_scaled_axes --scale-axes 1.02 1.02 1.05
 ```
 
 For more hands-on examples, check out the `examples/` directory.

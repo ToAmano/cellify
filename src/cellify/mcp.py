@@ -34,6 +34,9 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
     matrix: Optional[str] = None,
     min_dist: Optional[float] = None,
     conventional: bool = False,
+    scale_vol: Optional[float] = None,
+    scale_lat: Optional[float] = None,
+    scale_axes: Optional[List[float]] = None,
     substitute: Optional[List[str]] = None,
     vacancy_index: Optional[List[str]] = None,
     vacancy_count: Optional[List[str]] = None,
@@ -57,6 +60,9 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
         matrix: 3x3 transformation matrix (e.g. '1 0 0 / 0 1 0 / 0 0 2').
         min_dist: Target minimum periodic distance in Angstroms for automatic scaling.
         conventional: Convert input structure to conventional standard cell first.
+        scale_vol: Scale the structure's volume by a given factor.
+        scale_lat: Scale the structure's lattice constants by a given factor.
+        scale_axes: Scale the individual lattice vectors (axes) by three factors (fa, fb, fc).
         substitute: List of substitution rules (e.g. ['Si:Ge:0', 'Si:Al:12%']).
         vacancy_index: List of vacancy rules by index (e.g. ['Si:0', 'Si:4']).
         vacancy_count: List of vacancy rules by count (e.g. ['Si:2']).
@@ -127,6 +133,9 @@ def cellify(  # noqa: C901,CCR001 # pylint: disable=too-many-arguments,too-many-
             dim=dim,
             matrix=matrix,
             min_dist=min_dist,
+            scale_vol=scale_vol,
+            scale_lat=scale_lat,
+            scale_axes=scale_axes,
             substitute=substitute,
             vacancy_index=vacancy_index,
             vacancy_count=vacancy_count,

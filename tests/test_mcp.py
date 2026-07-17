@@ -87,6 +87,41 @@ def test_mcp_supercell(poscar_path: str, tmp_path: pytest.TempPathFactory) -> No
     assert os.path.exists(out_file_dist)
 
 
+def test_mcp_scaling(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
+    """
+    Tests the cellify tool with new scaling parameters.
+    """
+    import numpy as np
+    # 1. Volume scaling
+    out_file_vol = os.path.join(tmp_path, "POSCAR_scale_vol")
+    res_vol = cellify(poscar_path, scale_vol=2.0, output_path=out_file_vol)
+    assert "Scaling structure volume by factor: 2.0" in res_vol
+    assert os.path.exists(out_file_vol)
+    struct_vol, _ = load_structure_file(out_file_vol)
+    orig_struct, _ = load_structure_file(poscar_path)
+    assert np.isclose(struct_vol.volume, orig_struct.volume * 2.0)
+
+    # 2. Lattice scaling
+    out_file_lat = os.path.join(tmp_path, "POSCAR_scale_lat")
+    res_lat = cellify(poscar_path, scale_lat=1.5, output_path=out_file_lat)
+    assert "Scaling structure lattice constants by factor: 1.5" in res_lat
+    assert os.path.exists(out_file_lat)
+    struct_lat, _ = load_structure_file(out_file_lat)
+    assert np.allclose(struct_lat.lattice.matrix, np.array(orig_struct.lattice.matrix) * 1.5)
+
+    # 3. Axes scaling
+    out_file_axes = os.path.join(tmp_path, "POSCAR_scale_axes")
+    res_axes = cellify(poscar_path, scale_axes=[1.5, 2.0, 3.0], output_path=out_file_axes)
+    assert "Scaling structure lattice axes by factors" in res_axes
+    assert os.path.exists(out_file_axes)
+    struct_axes, _ = load_structure_file(out_file_axes)
+    expected_matrix = np.array(orig_struct.lattice.matrix)
+    expected_matrix[0] *= 1.5
+    expected_matrix[1] *= 2.0
+    expected_matrix[2] *= 3.0
+    assert np.allclose(struct_axes.lattice.matrix, expected_matrix)
+
+
 def test_mcp_defect(poscar_path: str, tmp_path: pytest.TempPathFactory) -> None:
     """
     Tests the cellify tool defect application (doping, vacancies).
