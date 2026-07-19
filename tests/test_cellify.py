@@ -1636,7 +1636,6 @@ def test_run_cellify_pipeline_capture_output(poscar_path, capsys):
 
 
 def test_cli_banner(poscar_path: str, tmp_path: Any, capsys: Any) -> None:
-    from unittest.mock import patch
     from cellify.cli import main
 
     out_file: str = str(tmp_path / "POSCAR_out_banner")
