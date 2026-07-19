@@ -1567,3 +1567,24 @@ def test_optimade_download_structure_failures():
     with patch("requests.get", return_value=MockResponse(404)):
         with pytest.raises(RuntimeError, match="Failed to download CIF from COD: status 404"):
             download_structure_from_entry("Crystallography Open Database (COD)", {"id": "12345"})
+
+
+def test_animate_print(capsys):
+    from cellify.cli import animate_print
+    import time
+
+    # Test isatty=False case
+    with patch("sys.stdout.isatty", return_value=False):
+        animate_print("line1\nline2", delay=0.01)
+        captured = capsys.readouterr()
+        assert captured.out == "line1\nline2\n"
+
+    # Test isatty=True case
+    start_time = time.time()
+    with patch("sys.stdout.isatty", return_value=True):
+        animate_print("line1\nline2", delay=0.05)
+        duration = time.time() - start_time
+        captured = capsys.readouterr()
+        # Since there are 2 lines, it should sleep at least 0.05s * 2 = 0.1s
+        assert duration >= 0.08
+        assert captured.out == "line1\nline2\n"

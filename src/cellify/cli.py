@@ -6,6 +6,7 @@ Handles arg parsing, workflow orchestration, and user output reporting.
 import argparse
 import os
 import sys
+import time
 from typing import Any, Dict, List, Optional
 
 from pymatgen.core import Structure
@@ -20,6 +21,18 @@ from cellify.core import (
     run_cellify_pipeline,
     save_structure_file,
 )
+
+
+def animate_print(text: str, delay: float = 0.03) -> None:
+    """
+    Prints text line-by-line with a small delay if stdout is a TTY.
+    """
+    if sys.stdout.isatty():
+        for line in text.splitlines():
+            print(line)
+            time.sleep(delay)
+    else:
+        print(text)
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -171,7 +184,7 @@ def main() -> None:  # noqa: C901,CCR001
                 Displays the search results summary and prompts the user to enter a
                 valid 1-based index corresponding to a candidate structure.
                 """
-                print(summary)
+                animate_print(summary)
                 try:
                     choice_str = input(f"Select a structure (1-{limit}): ").strip()
                     if not choice_str:
@@ -203,7 +216,7 @@ def main() -> None:  # noqa: C901,CCR001
             except ValueError as e:
                 summary = getattr(e, "summary", "")
                 if summary:
-                    print(summary)
+                    animate_print(summary)
                 print(f"Error: {e}", file=sys.stderr)
                 sys.exit(1)
             except Exception as e:  # pylint: disable=broad-exception-caught
@@ -211,7 +224,7 @@ def main() -> None:  # noqa: C901,CCR001
                 sys.exit(1)
 
             if args.select is not None:
-                print(summary)
+                animate_print(summary)
 
             print(f"Downloading structure from {db_name} (ID: {entry.get('id')})...")
             entry_id = entry.get("id", "unknown")
@@ -228,7 +241,7 @@ def main() -> None:  # noqa: C901,CCR001
             print(f"Error loading file: {e}", file=sys.stderr)
             sys.exit(1)
 
-    print(get_structure_summary(structure))
+    animate_print(get_structure_summary(structure))
 
     output_path: str = determine_output_path(args.input, args.output)
     try:
@@ -255,16 +268,16 @@ def main() -> None:  # noqa: C901,CCR001
             vacuum=args.vacuum,
         )
         if pipeline_log:
-            print(pipeline_log.strip())
+            animate_print(pipeline_log.strip())
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error processing structure: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Print final structure summary
-    print(get_structure_summary(structure, label="Final structure summary:"))
+    animate_print(get_structure_summary(structure, label="Final structure summary:"))
 
     if args.show_indices:
-        print(get_atomic_indices_table(structure))
+        animate_print(get_atomic_indices_table(structure))
 
     print(f"\nSaving final structure to: {output_path}")
     try:
