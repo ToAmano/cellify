@@ -1408,11 +1408,12 @@ def test_cli_main_formula_query_interactive_select(capsys, tmp_path):
     out_file = str(tmp_path / "Si_supercell.cif")
     with patch("requests.get", side_effect=mock_get):
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("builtins.input", return_value="1"):
-                test_args = ["cellify", "-i", "Si", "-o", out_file]
-                with patch("sys.argv", test_args):
-                    from cellify.cli import main
-                    main()
+            with patch("sys.stdout.isatty", return_value=True):
+                with patch("builtins.input", return_value="1"):
+                    test_args = ["cellify", "-i", "Si", "-o", out_file]
+                    with patch("sys.argv", test_args):
+                        from cellify.cli import main
+                        main()
 
     captured = capsys.readouterr()
     assert "Downloading structure from Materials Project (ID: mp-165)..." in captured.out
