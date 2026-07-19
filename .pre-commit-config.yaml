@@ -50,7 +50,7 @@ repos:
       language: python
       language_version: python3.11
       types: [python]
-      additional_dependencies: [ase, pymatgen, numpy, requests, mcp, anyio]
+      additional_dependencies: [ase, pymatgen, numpy, requests, mcp, anyio, rich]
       # Disable overly strict pylint checks that are not pragmatic for CLI apps (e.g. too many locals/branches/statements/docstrings)
       args: [--max-line-length,"150","--init-hook", "import sys; sys.path.insert(0, 'src')", "--disable=C0415,R0914,R0912,R0915,C0116,C0114"]
       files: ^src/

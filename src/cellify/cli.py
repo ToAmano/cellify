@@ -6,9 +6,14 @@ Handles arg parsing, workflow orchestration, and user output reporting.
 import argparse
 import os
 import sys
+import time
 from typing import Any, Dict, List, Optional
 
 from pymatgen.core import Structure
+from rich.align import Align
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 from cellify import __version__
 from cellify.core import (
@@ -20,6 +25,33 @@ from cellify.core import (
     run_cellify_pipeline,
     save_structure_file,
 )
+
+
+def animate_print(text: str, delay: float = 0.03) -> None:
+    """Prints text line-by-line with a small delay if stdout is a TTY.
+
+    This provides a typewriter-like visual effect in interactive terminal sessions
+    to match the style of demo recordings, while ensuring output remains instant
+    and unblocked when cellify is executed programmatically or piped/redirected.
+    """
+    if not text:
+        return
+    lines = text.splitlines()
+    if sys.stdout.isatty():
+        # If the output block is long (e.g. show-indices output tables of hundreds of atoms),
+        # we bypass the typewriter delay entirely to prevent the CLI from feeling slow/laggy
+        # while still outputting line-by-line.
+        actual_delay = delay if len(lines) <= 30 else 0.0
+        for line in lines:
+            # flush=True is used to bypass standard stdout buffering and ensure
+            # immediate rendering of the printed line.
+            print(line, flush=True)
+            if actual_delay > 0.0:
+                time.sleep(actual_delay)
+    else:
+        # Non-TTY mode (pipes, redirection, file dumps): output is printed instantly.
+        # We strip trailing newlines to match the TTY splitlines output style.
+        print(text.rstrip("\r\n"), flush=True)
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -151,6 +183,21 @@ def main() -> None:  # noqa: C901,CCR001
     """
     Main entry point for the cellify CLI utility.
     """
+    console: Console = Console()
+    # If the output is an interactive terminal (TTY), render a stylized cyan panel
+    # startup banner to make the CLI feel polished and modern. We check isatty()
+    # to avoid polluting piped/redirected text streams or automated script logs.
+    if sys.stdout.isatty():
+        banner_text: Text = Text()
+        banner_text.append("C E L L I F Y\n", style="bold cyan")
+        banner_text.append(
+            f"A friendly DFT helper for crystal structures | v{__version__}",
+            style="dim italic",
+        )
+        console.print(
+            Panel(Align.center(banner_text), border_style="cyan", expand=False)
+        )
+
     args: argparse.Namespace = parse_args()
 
     structure: Structure
@@ -164,6 +211,7 @@ def main() -> None:  # noqa: C901,CCR001
             from cellify.optimade import select_and_download_structure
 
             formula = args.input
+            status = None
 
             def cli_prompt(summary: str, limit: int) -> int:
                 """Handles interactive user inputs from stdout/stdin and validates the choice index.
@@ -171,7 +219,11 @@ def main() -> None:  # noqa: C901,CCR001
                 Displays the search results summary and prompts the user to enter a
                 valid 1-based index corresponding to a candidate structure.
                 """
-                print(summary)
+                # If the status spinner is still active when prompting the user,
+                # stop it first to prevent overlapping rendering issues.
+                if status is not None:
+                    status.stop()
+                animate_print(summary)
                 try:
                     choice_str = input(f"Select a structure (1-{limit}): ").strip()
                     if not choice_str:
@@ -195,15 +247,26 @@ def main() -> None:  # noqa: C901,CCR001
                 db_name: str
                 entry: Dict[str, Any]
                 summary: str
-                structure, db_name, entry, summary = select_and_download_structure(
-                    formula,
-                    select=args.select,
-                    interactive_prompt=interactive_prompt,
-                )
+                # Run the database query inside a status spinner context for a polished TTY experience.
+                if sys.stdout.isatty():
+                    status = console.status(
+                        "[bold green]Querying databases...", spinner="dots"
+                    )
+                    status.start()
+                try:
+                    structure, db_name, entry, summary = select_and_download_structure(
+                        formula,
+                        select=args.select,
+                        interactive_prompt=interactive_prompt,
+                    )
+                finally:
+                    # Clean up and ensure the spinner is stopped when the query finishes or fails.
+                    if status is not None:
+                        status.stop()
             except ValueError as e:
                 summary = getattr(e, "summary", "")
                 if summary:
-                    print(summary)
+                    animate_print(summary)
                 print(f"Error: {e}", file=sys.stderr)
                 sys.exit(1)
             except Exception as e:  # pylint: disable=broad-exception-caught
@@ -211,7 +274,7 @@ def main() -> None:  # noqa: C901,CCR001
                 sys.exit(1)
 
             if args.select is not None:
-                print(summary)
+                animate_print(summary)
 
             print(f"Downloading structure from {db_name} (ID: {entry.get('id')})...")
             entry_id = entry.get("id", "unknown")
@@ -228,7 +291,7 @@ def main() -> None:  # noqa: C901,CCR001
             print(f"Error loading file: {e}", file=sys.stderr)
             sys.exit(1)
 
-    print(get_structure_summary(structure))
+    animate_print(get_structure_summary(structure))
 
     output_path: str = determine_output_path(args.input, args.output)
     try:
@@ -241,35 +304,55 @@ def main() -> None:  # noqa: C901,CCR001
 
     # Execute modeling pipeline
     try:
-        structure, pipeline_log = run_cellify_pipeline(
-            structure,
-            conventional=args.conventional,
-            dim=args.dim,
-            matrix=args.matrix,
-            min_dist=args.min_dist,
-            substitute=args.substitute,
-            vacancy_index=args.vacancy_index,
-            vacancy_count=args.vacancy_count,
-            slab=args.slab,
-            thick=args.thick,
-            vacuum=args.vacuum,
-        )
-        if pipeline_log:
-            print(pipeline_log.strip())
+        # In TTY environments, run the pipeline with a spinner and capture_output=False.
+        # This outputs pipeline steps in real time directly to the terminal under the spinner
+        # and prevents log loss if the pipeline crashes mid-execution.
+        if sys.stdout.isatty():
+            with console.status("[bold green]Processing structure...", spinner="dots"):
+                structure, _ = run_cellify_pipeline(
+                    structure,
+                    conventional=args.conventional,
+                    dim=args.dim,
+                    matrix=args.matrix,
+                    min_dist=args.min_dist,
+                    substitute=args.substitute,
+                    vacancy_index=args.vacancy_index,
+                    vacancy_count=args.vacancy_count,
+                    slab=args.slab,
+                    thick=args.thick,
+                    vacuum=args.vacuum,
+                    capture_output=False,
+                )
+        # In non-interactive environments (pipes/redirects), run instantly without a spinner.
+        else:
+            structure, _ = run_cellify_pipeline(
+                structure,
+                conventional=args.conventional,
+                dim=args.dim,
+                matrix=args.matrix,
+                min_dist=args.min_dist,
+                substitute=args.substitute,
+                vacancy_index=args.vacancy_index,
+                vacancy_count=args.vacancy_count,
+                slab=args.slab,
+                thick=args.thick,
+                vacuum=args.vacuum,
+                capture_output=False,
+            )
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error processing structure: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Print final structure summary
-    print(get_structure_summary(structure, label="Final structure summary:"))
+    animate_print(get_structure_summary(structure, label="Final structure summary:"))
 
     if args.show_indices:
-        print(get_atomic_indices_table(structure))
+        animate_print(get_atomic_indices_table(structure))
 
     print(f"\nSaving final structure to: {output_path}")
     try:
         save_structure_file(output_path, structure, meta_data)
-        print("Success!")
+        animate_print("Success!")
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error saving file: {e}", file=sys.stderr)
         sys.exit(1)
