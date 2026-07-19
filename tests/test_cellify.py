@@ -1599,3 +1599,20 @@ def test_animate_print(capsys):
         animate_print("line1\nline2\n", delay=0.01)
         captured = capsys.readouterr()
         assert captured.out == "line1\nline2\n"
+
+
+def test_run_cellify_pipeline_capture_output(poscar_path, capsys):
+    from cellify.core import run_cellify_pipeline
+    structure, _ = load_structure_file(poscar_path)
+
+    # 1. With capture_output=True (default), output is captured and returned, not printed to stdout
+    _, log_out = run_cellify_pipeline(structure, conventional=True)
+    captured = capsys.readouterr()
+    assert "Converting structure to standard conventional cell..." in log_out
+    assert captured.out == ""
+
+    # 2. With capture_output=False, output is printed to stdout and returned log is empty
+    _, log_out2 = run_cellify_pipeline(structure, conventional=True, capture_output=False)
+    captured2 = capsys.readouterr()
+    assert log_out2 == ""
+    assert "Converting structure to standard conventional cell..." in captured2.out

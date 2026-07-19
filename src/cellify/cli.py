@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from pymatgen.core import Structure
+from rich.console import Console
 
 from cellify import __version__
 from cellify.core import (
@@ -164,6 +165,7 @@ def main() -> None:  # noqa: C901,CCR001
     """
     Main entry point for the cellify CLI utility.
     """
+    console = Console()
     args: argparse.Namespace = parse_args()
 
     structure: Structure
@@ -177,6 +179,7 @@ def main() -> None:  # noqa: C901,CCR001
             from cellify.optimade import select_and_download_structure
 
             formula = args.input
+            status = None
 
             def cli_prompt(summary: str, limit: int) -> int:
                 """Handles interactive user inputs from stdout/stdin and validates the choice index.
@@ -184,6 +187,8 @@ def main() -> None:  # noqa: C901,CCR001
                 Displays the search results summary and prompts the user to enter a
                 valid 1-based index corresponding to a candidate structure.
                 """
+                if status is not None:
+                    status.stop()
                 animate_print(summary)
                 try:
                     choice_str = input(f"Select a structure (1-{limit}): ").strip()
@@ -208,11 +213,20 @@ def main() -> None:  # noqa: C901,CCR001
                 db_name: str
                 entry: Dict[str, Any]
                 summary: str
-                structure, db_name, entry, summary = select_and_download_structure(
-                    formula,
-                    select=args.select,
-                    interactive_prompt=interactive_prompt,
-                )
+                if sys.stdout.isatty():
+                    status = console.status(
+                        "[bold green]Querying databases...", spinner="dots"
+                    )
+                    status.start()
+                try:
+                    structure, db_name, entry, summary = select_and_download_structure(
+                        formula,
+                        select=args.select,
+                        interactive_prompt=interactive_prompt,
+                    )
+                finally:
+                    if status is not None:
+                        status.stop()
             except ValueError as e:
                 summary = getattr(e, "summary", "")
                 if summary:
@@ -254,21 +268,39 @@ def main() -> None:  # noqa: C901,CCR001
 
     # Execute modeling pipeline
     try:
-        structure, pipeline_log = run_cellify_pipeline(
-            structure,
-            conventional=args.conventional,
-            dim=args.dim,
-            matrix=args.matrix,
-            min_dist=args.min_dist,
-            substitute=args.substitute,
-            vacancy_index=args.vacancy_index,
-            vacancy_count=args.vacancy_count,
-            slab=args.slab,
-            thick=args.thick,
-            vacuum=args.vacuum,
-        )
-        if pipeline_log:
-            animate_print(pipeline_log.strip())
+        if sys.stdout.isatty():
+            with console.status("[bold green]Processing structure...", spinner="dots"):
+                structure, pipeline_log = run_cellify_pipeline(
+                    structure,
+                    conventional=args.conventional,
+                    dim=args.dim,
+                    matrix=args.matrix,
+                    min_dist=args.min_dist,
+                    substitute=args.substitute,
+                    vacancy_index=args.vacancy_index,
+                    vacancy_count=args.vacancy_count,
+                    slab=args.slab,
+                    thick=args.thick,
+                    vacuum=args.vacuum,
+                    capture_output=False,
+                )
+        else:
+            structure, pipeline_log = run_cellify_pipeline(
+                structure,
+                conventional=args.conventional,
+                dim=args.dim,
+                matrix=args.matrix,
+                min_dist=args.min_dist,
+                substitute=args.substitute,
+                vacancy_index=args.vacancy_index,
+                vacancy_count=args.vacancy_count,
+                slab=args.slab,
+                thick=args.thick,
+                vacuum=args.vacuum,
+                capture_output=True,
+            )
+            if pipeline_log:
+                animate_print(pipeline_log.strip())
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error processing structure: {e}", file=sys.stderr)
         sys.exit(1)

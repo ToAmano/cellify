@@ -472,13 +472,19 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
     slab: Optional[List[int]] = None,
     thick: Optional[float] = None,
     vacuum: Optional[float] = None,
+    capture_output: bool = True,
 ) -> Tuple[Structure, str]:
     """
     Runs the entire modeling pipeline on the structure, capturing all console
     outputs and returning the final structure along with the captured log string.
     """
     log_stream: io.StringIO = io.StringIO()
-    with contextlib.redirect_stdout(log_stream):
+    ctx = (
+        contextlib.redirect_stdout(log_stream)
+        if capture_output
+        else contextlib.nullcontext()
+    )
+    with ctx:
         # 1. Conventional cell conversion
         if conventional:
             print("Converting structure to standard conventional cell...")
@@ -500,4 +506,4 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
             vacuum=vacuum,
         )
 
-    return structure, log_stream.getvalue()
+    return structure, log_stream.getvalue() if capture_output else ""
