@@ -10,7 +10,10 @@ import time
 from typing import Any, Dict, List, Optional
 
 from pymatgen.core import Structure
+from rich.align import Align
 from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 from cellify import __version__
 from cellify.core import (
@@ -169,7 +172,18 @@ def main() -> None:  # noqa: C901,CCR001
     """
     Main entry point for the cellify CLI utility.
     """
-    console = Console()
+    console: Console = Console()
+    if sys.stdout.isatty():
+        banner_text: Text = Text()
+        banner_text.append("C E L L I F Y\n", style="bold cyan")
+        banner_text.append(
+            f"A friendly DFT helper for crystal structures | v{__version__}",
+            style="dim italic",
+        )
+        console.print(
+            Panel(Align.center(banner_text), border_style="cyan", expand=False)
+        )
+
     args: argparse.Namespace = parse_args()
 
     structure: Structure
