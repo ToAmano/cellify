@@ -28,18 +28,29 @@ from cellify.core import (
 
 
 def animate_print(text: str, delay: float = 0.03) -> None:
-    """
-    Prints text line-by-line with a small delay if stdout is a TTY.
+    """Prints text line-by-line with a small delay if stdout is a TTY.
+
+    This provides a typewriter-like visual effect in interactive terminal sessions
+    to match the style of demo recordings, while ensuring output remains instant
+    and unblocked when cellify is executed programmatically or piped/redirected.
     """
     if not text:
         return
     lines = text.splitlines()
     if sys.stdout.isatty():
+        # If the output block is long (e.g. show-indices output tables of hundreds of atoms),
+        # we bypass the typewriter delay entirely to prevent the CLI from feeling slow/laggy
+        # while still outputting line-by-line.
         actual_delay = delay if len(lines) <= 30 else 0.0
         for line in lines:
+            # flush=True is used to bypass standard stdout buffering and ensure
+            # immediate rendering of the printed line.
             print(line, flush=True)
-            time.sleep(actual_delay)
+            if actual_delay > 0.0:
+                time.sleep(actual_delay)
     else:
+        # Non-TTY mode (pipes, redirection, file dumps): output is printed instantly.
+        # We strip trailing newlines to match the TTY splitlines output style.
         print(text.rstrip("\r\n"), flush=True)
 
 
@@ -173,6 +184,9 @@ def main() -> None:  # noqa: C901,CCR001
     Main entry point for the cellify CLI utility.
     """
     console: Console = Console()
+    # If the output is an interactive terminal (TTY), render a stylized cyan panel
+    # startup banner to make the CLI feel polished and modern. We check isatty()
+    # to avoid polluting piped/redirected text streams or automated script logs.
     if sys.stdout.isatty():
         banner_text: Text = Text()
         banner_text.append("C E L L I F Y\n", style="bold cyan")
@@ -205,6 +219,8 @@ def main() -> None:  # noqa: C901,CCR001
                 Displays the search results summary and prompts the user to enter a
                 valid 1-based index corresponding to a candidate structure.
                 """
+                # If the status spinner is still active when prompting the user,
+                # stop it first to prevent overlapping rendering issues.
                 if status is not None:
                     status.stop()
                 animate_print(summary)
@@ -231,6 +247,7 @@ def main() -> None:  # noqa: C901,CCR001
                 db_name: str
                 entry: Dict[str, Any]
                 summary: str
+                # Run the database query inside a status spinner context for a polished TTY experience.
                 if sys.stdout.isatty():
                     status = console.status(
                         "[bold green]Querying databases...", spinner="dots"
@@ -243,6 +260,7 @@ def main() -> None:  # noqa: C901,CCR001
                         interactive_prompt=interactive_prompt,
                     )
                 finally:
+                    # Clean up and ensure the spinner is stopped when the query finishes or fails.
                     if status is not None:
                         status.stop()
             except ValueError as e:
@@ -286,6 +304,9 @@ def main() -> None:  # noqa: C901,CCR001
 
     # Execute modeling pipeline
     try:
+        # In TTY environments, run the pipeline with a spinner and capture_output=False.
+        # This outputs pipeline steps in real time directly to the terminal under the spinner
+        # and prevents log loss if the pipeline crashes mid-execution.
         if sys.stdout.isatty():
             with console.status("[bold green]Processing structure...", spinner="dots"):
                 structure, _ = run_cellify_pipeline(
@@ -302,6 +323,7 @@ def main() -> None:  # noqa: C901,CCR001
                     vacuum=args.vacuum,
                     capture_output=False,
                 )
+        # In non-interactive environments (pipes/redirects), run instantly without a spinner.
         else:
             structure, _ = run_cellify_pipeline(
                 structure,

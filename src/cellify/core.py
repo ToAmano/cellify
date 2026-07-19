@@ -479,6 +479,9 @@ def run_cellify_pipeline(  # noqa: C901,CCR001 # pylint: disable=too-many-argume
     outputs and returning the final structure along with the captured log string.
     """
     log_stream: io.StringIO = io.StringIO()
+    # Conditionally capture stdout. capture_output=True is required for the MCP server
+    # (mcp.py) so that output logs do not pollute the stdout JSON-RPC stream, while
+    # capture_output=False is used in TTY CLI mode to allow real-time console spinner updates.
     ctx = (
         contextlib.redirect_stdout(log_stream)
         if capture_output
