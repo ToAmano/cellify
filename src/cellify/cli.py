@@ -29,10 +29,10 @@ def animate_print(text: str, delay: float = 0.03) -> None:
     """
     if sys.stdout.isatty():
         for line in text.splitlines():
-            print(line)
+            print(line, flush=True)
             time.sleep(delay)
     else:
-        print(text.rstrip("\r\n"))
+        print(text.rstrip("\r\n"), flush=True)
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
