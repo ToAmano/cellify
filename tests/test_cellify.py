@@ -1,5 +1,6 @@
 import os
 import re
+from typing import Any, List
 from unittest.mock import patch
 
 import numpy as np
@@ -1407,11 +1408,12 @@ def test_cli_main_formula_query_interactive_select(capsys, tmp_path):
     out_file = str(tmp_path / "Si_supercell.cif")
     with patch("requests.get", side_effect=mock_get):
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("builtins.input", return_value="1"):
-                test_args = ["cellify", "-i", "Si", "-o", out_file]
-                with patch("sys.argv", test_args):
-                    from cellify.cli import main
-                    main()
+            with patch("sys.stdout.isatty", return_value=True):
+                with patch("builtins.input", return_value="1"):
+                    test_args = ["cellify", "-i", "Si", "-o", out_file]
+                    with patch("sys.argv", test_args):
+                        from cellify.cli import main
+                        main()
 
     captured = capsys.readouterr()
     assert "Downloading structure from Materials Project (ID: mp-165)..." in captured.out
@@ -1567,3 +1569,93 @@ def test_optimade_download_structure_failures():
     with patch("requests.get", return_value=MockResponse(404)):
         with pytest.raises(RuntimeError, match="Failed to download CIF from COD: status 404"):
             download_structure_from_entry("Crystallography Open Database (COD)", {"id": "12345"})
+
+
+def test_animate_print(capsys):
+    from cellify.cli import animate_print
+    import time
+
+    # Test empty text case
+    animate_print("")
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+    # Test isatty=False case
+    with patch("sys.stdout.isatty", return_value=False):
+        animate_print("line1\nline2", delay=0.01)
+        captured = capsys.readouterr()
+        assert captured.out == "line1\nline2\n"
+
+    # Test isatty=True case
+    start_time = time.time()
+    with patch("sys.stdout.isatty", return_value=True):
+        animate_print("line1\nline2", delay=0.05)
+        duration = time.time() - start_time
+        captured = capsys.readouterr()
+        # Since there are 2 lines, it should sleep at least 0.05s * 2 = 0.1s
+        assert duration >= 0.08
+        assert captured.out == "line1\nline2\n"
+
+    # Test trailing newlines consistency
+    with patch("sys.stdout.isatty", return_value=False):
+        animate_print("line1\nline2\n", delay=0.01)
+        captured = capsys.readouterr()
+        assert captured.out == "line1\nline2\n"
+
+    with patch("sys.stdout.isatty", return_value=True):
+        animate_print("line1\nline2\n", delay=0.01)
+        captured = capsys.readouterr()
+        assert captured.out == "line1\nline2\n"
+
+    # Test isatty=True case with > 30 lines (bypasses delay)
+    many_lines = "\n".join(f"line{i}" for i in range(35))
+    start_time = time.time()
+    with patch("sys.stdout.isatty", return_value=True):
+        animate_print(many_lines, delay=0.05)
+        duration = time.time() - start_time
+        captured = capsys.readouterr()
+        # Sleep is bypassed, so it should be very fast (<< 0.1s despite 35 lines with 0.05s delay)
+        assert duration < 0.1
+        assert len(captured.out.splitlines()) == 35
+
+
+def test_run_cellify_pipeline_capture_output(poscar_path, capsys):
+    from cellify.core import run_cellify_pipeline
+    structure, _ = load_structure_file(poscar_path)
+
+    # 1. With capture_output=True (default), output is captured and returned, not printed to stdout
+    _, log_out = run_cellify_pipeline(structure, conventional=True)
+    captured = capsys.readouterr()
+    assert "Converting structure to standard conventional cell..." in log_out
+    assert captured.out == ""
+
+    # 2. With capture_output=False, output is printed to stdout and returned log is empty
+    _, log_out2 = run_cellify_pipeline(structure, conventional=True, capture_output=False)
+    captured2 = capsys.readouterr()
+    assert log_out2 == ""
+    assert "Converting structure to standard conventional cell..." in captured2.out
+
+
+def test_cli_banner(poscar_path: str, tmp_path: Any, capsys: Any) -> None:
+    from cellify.cli import main
+
+    out_file: str = str(tmp_path / "POSCAR_out_banner")
+
+    # Case 1: TTY is True -> Banner should be present in captured.out
+    test_args: List[str] = ["cellify", "-i", poscar_path, "-o", out_file]
+    with patch("sys.argv", test_args), patch("sys.stdout.isatty", return_value=True):
+        main()
+
+    captured_tty = capsys.readouterr()
+    assert "C E L L I F Y" in captured_tty.out
+    assert "A friendly DFT helper for crystal structures" in captured_tty.out
+
+    # Case 2: TTY is False -> Banner should NOT be present in captured.out
+    out_file_2: str = str(tmp_path / "POSCAR_out_nobanner")
+    test_args_2: List[str] = ["cellify", "-i", poscar_path, "-o", out_file_2]
+    with patch("sys.argv", test_args_2), patch("sys.stdout.isatty", return_value=False):
+        main()
+
+    captured_nontty = capsys.readouterr()
+    assert "C E L L I F Y" not in captured_nontty.out
+    assert "A friendly DFT helper for crystal structures" not in captured_nontty.out
