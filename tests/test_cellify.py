@@ -1588,3 +1588,14 @@ def test_animate_print(capsys):
         # Since there are 2 lines, it should sleep at least 0.05s * 2 = 0.1s
         assert duration >= 0.08
         assert captured.out == "line1\nline2\n"
+
+    # Test trailing newlines consistency
+    with patch("sys.stdout.isatty", return_value=False):
+        animate_print("line1\nline2\n", delay=0.01)
+        captured = capsys.readouterr()
+        assert captured.out == "line1\nline2\n"
+
+    with patch("sys.stdout.isatty", return_value=True):
+        animate_print("line1\nline2\n", delay=0.01)
+        captured = capsys.readouterr()
+        assert captured.out == "line1\nline2\n"

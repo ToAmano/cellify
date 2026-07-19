@@ -32,7 +32,7 @@ def animate_print(text: str, delay: float = 0.03) -> None:
             print(line)
             time.sleep(delay)
     else:
-        print(text)
+        print(text.rstrip("\r\n"))
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -282,7 +282,7 @@ def main() -> None:  # noqa: C901,CCR001
     print(f"\nSaving final structure to: {output_path}")
     try:
         save_structure_file(output_path, structure, meta_data)
-        print("Success!")
+        animate_print("Success!")
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error saving file: {e}", file=sys.stderr)
         sys.exit(1)
