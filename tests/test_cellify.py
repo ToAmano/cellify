@@ -1573,6 +1573,11 @@ def test_animate_print(capsys):
     from cellify.cli import animate_print
     import time
 
+    # Test empty text case
+    animate_print("")
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
     # Test isatty=False case
     with patch("sys.stdout.isatty", return_value=False):
         animate_print("line1\nline2", delay=0.01)
@@ -1599,6 +1604,17 @@ def test_animate_print(capsys):
         animate_print("line1\nline2\n", delay=0.01)
         captured = capsys.readouterr()
         assert captured.out == "line1\nline2\n"
+
+    # Test isatty=True case with > 30 lines (bypasses delay)
+    many_lines = "\n".join(f"line{i}" for i in range(35))
+    start_time = time.time()
+    with patch("sys.stdout.isatty", return_value=True):
+        animate_print(many_lines, delay=0.05)
+        duration = time.time() - start_time
+        captured = capsys.readouterr()
+        # Sleep is bypassed, so it should be very fast (<< 0.1s despite 35 lines with 0.05s delay)
+        assert duration < 0.1
+        assert len(captured.out.splitlines()) == 35
 
 
 def test_run_cellify_pipeline_capture_output(poscar_path, capsys):

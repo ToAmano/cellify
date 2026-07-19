@@ -28,10 +28,14 @@ def animate_print(text: str, delay: float = 0.03) -> None:
     """
     Prints text line-by-line with a small delay if stdout is a TTY.
     """
+    if not text:
+        return
+    lines = text.splitlines()
     if sys.stdout.isatty():
-        for line in text.splitlines():
+        actual_delay = delay if len(lines) <= 30 else 0.0
+        for line in lines:
             print(line, flush=True)
-            time.sleep(delay)
+            time.sleep(actual_delay)
     else:
         print(text.rstrip("\r\n"), flush=True)
 
@@ -270,7 +274,7 @@ def main() -> None:  # noqa: C901,CCR001
     try:
         if sys.stdout.isatty():
             with console.status("[bold green]Processing structure...", spinner="dots"):
-                structure, pipeline_log = run_cellify_pipeline(
+                structure, _ = run_cellify_pipeline(
                     structure,
                     conventional=args.conventional,
                     dim=args.dim,
@@ -285,7 +289,7 @@ def main() -> None:  # noqa: C901,CCR001
                     capture_output=False,
                 )
         else:
-            structure, pipeline_log = run_cellify_pipeline(
+            structure, _ = run_cellify_pipeline(
                 structure,
                 conventional=args.conventional,
                 dim=args.dim,
@@ -297,10 +301,8 @@ def main() -> None:  # noqa: C901,CCR001
                 slab=args.slab,
                 thick=args.thick,
                 vacuum=args.vacuum,
-                capture_output=True,
+                capture_output=False,
             )
-            if pipeline_log:
-                animate_print(pipeline_log.strip())
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"Error processing structure: {e}", file=sys.stderr)
         sys.exit(1)
