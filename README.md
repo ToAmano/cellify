@@ -12,7 +12,7 @@ A user-friendly command-line interface (CLI) tool designed for DFT researchers t
 
 ## Features
 
-- **Format-Free Multi-Format Conversion**: Supports VASP (`POSCAR`, `CONTCAR`), Quantum ESPRESSO (`.in`, `.qe`), CIF (`.cif`), XSF (`.xsf`), XYZ (`.xyz`), and FHI-aims (`geometry.in`).
+- **Format-Free Multi-Format Conversion**: Supports VASP (`POSCAR`, `CONTCAR`), Quantum ESPRESSO (`.in`, `.qe`), CPMD (`.inp`, `.cpmd`), CIF (`.cif`), XSF (`.xsf`), XYZ (`.xyz`), and FHI-aims (`geometry.in`).
 - **Flexible Cell Expansion (Supercell Generation)**:
   - Diagonal scaling (e.g., `2 2 2`).
   - Arbitrary $3 \times 3$ transformation matrices (e.g., for orthogonalization).
@@ -20,7 +20,8 @@ A user-friendly command-line interface (CLI) tool designed for DFT researchers t
 - **Conventional Cell Auto-Conversion**: Automatically transforms loaded primitive structures into their standard conventional representation using `--conventional`.
 - **Easy Defect & Doping Modeling**: Supports atomic substitutions (absolute index or percentage) and vacancy creation.
 - **Surface Slab Generation**: Cuts surface slabs by specifying Miller indices $(h, k, l)$, slab thickness, and vacuum thickness.
-- **Calculation-Ready Input Generation**: Automatically updates coordinate-dependent variables (e.g., `nat`, `ntyp` in Quantum ESPRESSO) while preserving all original calculation parameters, namelists, and comments.
+- **Calculation-Ready Input Generation**: Automatically updates coordinate-dependent variables (e.g., `nat`, `ntyp` in Quantum ESPRESSO, or species blocks in CPMD) while preserving all original calculation parameters, namelists, and comments.
+- **CPMD Atom Sorting & Index Sidecar**: Automatically groups atoms by chemical species for CPMD (`TOO MANY ATOMIC SPECIES` protection) and exports a structured JSON sidecar (`<output>.index_map.json`) along with embedded comment mappings.
 
 ---
 

@@ -5,7 +5,7 @@ description: Use the cellify CLI to generate supercells, conventional cells, vac
 
 # Cellify Agentic Skill Guide
 
-This skill guides you in using `cellify` to manipulate crystal structure files (VASP POSCAR, CIF, and Quantum ESPRESSO input formats) for DFT calculations.
+This skill guides you in using `cellify` to manipulate crystal structure files (VASP POSCAR, CIF, Quantum ESPRESSO input, and CPMD `.inp` formats) for DFT and MD calculations.
 
 ## 1. When to Use This Skill
 Use this skill when you need to perform the following structure-building tasks:
@@ -14,7 +14,8 @@ Use this skill when you need to perform the following structure-building tasks:
 - **Supercell Generation**: Build larger periodic structures using diagonal scaling factors (`-d`/`--dim`), a transformation matrix (`-m`/`--matrix`), or target minimum periodic distance (`--min-dist`).
 - **Vacancy / Defect Builder**: Remove (`--vacancy` or `-v`) or substitute (`--doping` or `-d`) atoms to model defects or dopants.
 - **Slab Cutting**: Create 2D surface slabs (`--slab`) with custom Miller indices, thickness, and vacuum space.
-- **Index Mapping Inspection**: Show mapping of absolute atomic indices to element types and coordinates (`--show-indices`).
+- **CPMD & Quantum ESPRESSO Input Generation**: Prepare calculation-ready CPMD (`.inp`) or QE (`.in`) files using `--template` or built-in template aliases (`cpmd_georelax`, `cpmd_bomd_relax`, `cpmd_bomd_wan`, `cpmd_restart`).
+- **Index Mapping Inspection**: Show mapping of absolute atomic indices to element types and coordinates (`--show-indices`). Automatically exports `<output>.index_map.json` when generating CPMD inputs.
 
 ---
 
