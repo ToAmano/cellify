@@ -58,12 +58,33 @@ def process_template_and_validation(
     calc: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Handles template loading, calculation overrides, and QE I/O format validations.
+    Handles template loading, calculation overrides, and QE/CPMD I/O format validations.
     """
-    if template_path:
-        if not os.path.exists(template_path):
+    cpmd_template_map: Dict[str, str] = {
+        "cpmd_georelax": "cpmd/georelax.inp.tpl",
+        "cpmd_bomd_relax": "cpmd/bomd_relax.inp.tpl",
+        "cpmd_bomd_wan": "cpmd/bomd_wan_restart.inp.tpl",
+        "cpmd_bomd_wan_restart": "cpmd/bomd_wan_restart.inp.tpl",
+        "cpmd_restart": "cpmd/cpmd_restart.inp.tpl",
+    }
+
+    resolved_template: Optional[str] = template_path
+    if resolved_template and resolved_template in cpmd_template_map:
+        tpl_rel: str = cpmd_template_map[resolved_template]
+        resolved_template = os.path.join(
+            os.path.dirname(__file__), "templates", tpl_rel
+        )
+
+    if not resolved_template and calc and calc in cpmd_template_map:
+        tpl_rel = cpmd_template_map[calc]
+        resolved_template = os.path.join(
+            os.path.dirname(__file__), "templates", tpl_rel
+        )
+
+    if resolved_template:
+        if not os.path.exists(resolved_template):
             raise FileNotFoundError(f"Template file '{template_path}' not found.")
-        _, template_meta = load_structure_file(template_path)
+        _, template_meta = load_structure_file(resolved_template)
         meta_data = template_meta
 
     if calc:
